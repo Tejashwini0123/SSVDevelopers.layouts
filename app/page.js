@@ -201,15 +201,15 @@ export default function UserPortal() {
               {/* Legends list */}
               <div className="control-panel-legends">
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "1.1rem", fontWeight: "700" }}>
-                  <span style={{ width: 30, height: 30, borderRadius: "2px", border: "3px solid #ffffff", background: "var(--color-available)", boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }}></span>
+                  <span style={{ width: 20, height: 20, borderRadius: "2px", border: "2px solid #ffffff", background: "var(--color-available)", boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }}></span>
                   <span style={{ color: "var(--color-available)" }}>Available ({plots.filter((p) => p.status === "Available").length})</span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "1.1rem", fontWeight: "700" }}>
-                  <span style={{ width: 30, height: 30, borderRadius: "2px", border: "3px solid #ffffff", background: "var(--color-registered)", boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }}></span>
+                  <span style={{ width: 20, height: 20, borderRadius: "2px", border: "2px solid #ffffff", background: "var(--color-registered)", boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }}></span>
                   <span style={{ color: "var(--color-registered)" }}>Registered ({plots.filter((p) => p.status === "Registered").length})</span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "1.1rem", fontWeight: "700" }}>
-                  <span style={{ width: 30, height: 30, borderRadius: "2px", border: "3px solid #ffffff", background: "var(--color-booked)", boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }}></span>
+                  <span style={{ width: 20, height: 20, borderRadius: "2px", border: "2px solid #ffffff", background: "var(--color-booked)", boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }}></span>
                   <span style={{ color: "var(--color-booked)" }}>Booked ({plots.filter((p) => p.status === "Booked").length})</span>
                 </div>
               </div>
