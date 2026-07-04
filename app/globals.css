@@ -625,9 +625,16 @@ p {
     gap: 1rem !important;
   }
 
-  /* Keep canvas zoomable/scrollable but legible on mobile */
+  /* Keep canvas scrollable and prevent compression/distortion on mobile */
   .layout-canvas-wrapper {
-    min-width: 750px !important;
+    width: 1000px !important;
+    max-width: none !important;
+    min-width: 1000px !important;
+  }
+  .layout-image {
+    width: 1000px !important;
+    max-width: none !important;
+    height: auto !important;
   }
 
   .layout-container-outer {
