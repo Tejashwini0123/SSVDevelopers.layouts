@@ -23,14 +23,10 @@
   /* Solid Crimson Red */
   --color-booked: #002fa7;
   /* Solid Royal Blue */
-  --color-onhold: #cfee36;
-  /* Solid Vibrant Yellow */
-
   /* Subtle glow effects */
   --glow-available: rgba(0, 150, 57, 0.15);
   --glow-registered: rgba(230, 0, 0, 0.15);
   --glow-booked: rgba(0, 47, 167, 0.15);
-  --glow-onhold: rgba(255, 183, 0, 0.15);
 
   --font-sans: var(--font-geist-sans), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: var(--font-geist-mono), monospace;
@@ -242,11 +238,7 @@ p {
   border: 1px solid rgba(29, 78, 216, 0.2);
 }
 
-.badge-onhold {
-  background: rgba(109, 40, 217, 0.1);
-  color: var(--color-onhold);
-  border: 1px solid rgba(109, 40, 217, 0.2);
-}
+
 
 /* Animations */
 @keyframes fadeIn {
@@ -295,24 +287,24 @@ p {
   cursor: crosshair;
 }
 
-/* Plot Circle Marker styling - Resized to 24px, circular shape, white text, bold borders */
+/* Plot Rectangle Marker styling - Resized to 42x40px, rectangular shape, white text, bold borders */
 .plot-marker {
   position: absolute;
-  width: 24px;
-  height: 24px;
+  width: 42px;
+  height: 40px;
   transform: translate(-50%, -50%);
-  border-radius: 50%;
+  border-radius: 4px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid #ffffff;
+  border: 4px solid #ffffff;
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
   transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease;
   z-index: 10;
 
   /* Text styling for Plot Number */
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 800;
   color: #ffffff;
   line-height: 1;
@@ -341,9 +333,7 @@ p {
   background-color: var(--color-booked);
 }
 
-.plot-marker.status-onhold {
-  background-color: var(--color-onhold);
-}
+
 
 /* Admin Dashboard Specific Classes */
 .admin-login-wrapper {
@@ -391,11 +381,9 @@ p {
 
 .logo-area {
   font-weight: 800;
-  font-size: 1.25rem;
+  font-size: 1.6rem;
   letter-spacing: -0.03em;
-  background: var(--accent-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--color-registered);
 }
 
 /* Image Upload Placeholder card */

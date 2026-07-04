@@ -471,7 +471,7 @@ export default function AdminPage() {
       {/* Top Navigation */}
       <nav className="admin-navbar">
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <img src="/logo.jpg" alt="Sri Sidhi Vinayakaa Logo" style={{ height: "60px", width: "60px", borderRadius: "50%", border: "1.5px solid var(--border-light)", objectFit: "cover" }} />
+          <img src="/logo.jpg" alt="Sri Sidhi Vinayakaa Logo" style={{ height: "90px", width: "90px", borderRadius: "50%", border: "1.5px solid var(--border-light)", objectFit: "cover" }} />
           <div className="logo-area">SRI SIDHI VINAYAKAA DEVELOPERS | ADMIN PANEL</div>
         </div>
         <div>
@@ -546,12 +546,12 @@ export default function AdminPage() {
 
                 {isEditing && (
                   <div className="info-banner">
-                    💡 Click anywhere on the layout image to move this circle marker to a new position.
+                    💡 Click anywhere on the layout image to move this rectangular marker to a new position.
                   </div>
                 )}
                 {!isEditing && formX === 0 && formY === 0 && (
                   <div className="info-banner">
-                    💡 Click on the layout image to choose where to place a new circle marker.
+                    💡 Click on the layout image to choose where to place a new rectangular marker.
                   </div>
                 )}
 
@@ -582,7 +582,6 @@ export default function AdminPage() {
                       <option value="Available">Available (Green)</option>
                       <option value="Registered">Registered (Red)</option>
                       <option value="Booked">Booked (Blue)</option>
-                      <option value="On Hold">On Hold (Yellow)</option>
                     </select>
                   </div>
 
@@ -695,7 +694,7 @@ export default function AdminPage() {
               <div className="glass-card" style={{ flex: 1, minHeight: 0 }}>
                 <h2>Plots in Layout ({plots.length})</h2>
                 {plots.length === 0 ? (
-                  <div className="empty-state">No plot markers created yet. Click on the layout drawing to drop the first circle.</div>
+                  <div className="empty-state">No plot markers created yet. Click on the layout drawing to drop the first rectangle.</div>
                 ) : (
                   <div className="plots-list-container">
                     {plots.map((plot) => (
@@ -735,7 +734,6 @@ export default function AdminPage() {
                   <span className="badge badge-available">Available ({plots.filter(p => p.status === "Available").length})</span>
                   <span className="badge badge-registered">Registered ({plots.filter(p => p.status === "Registered").length})</span>
                   <span className="badge badge-booked">Booked ({plots.filter(p => p.status === "Booked").length})</span>
-                  <span className="badge badge-onhold">On Hold ({plots.filter(p => p.status === "On Hold").length})</span>
                 </div>
               </div>
 
@@ -759,7 +757,7 @@ export default function AdminPage() {
                       onClick={handleLayoutClick}
                     />
 
-                    {/* Plots circles with number labels */}
+                    {/* Plots rectangles with number labels */}
                     {plots.map((plot) => (
                       <div
                         key={plot._id}
@@ -775,7 +773,7 @@ export default function AdminPage() {
                       </div>
                     ))}
 
-                    {/* Placing circle template */}
+                    {/* Placing rectangle template */}
                     {!isEditing && (formX > 0 || formY > 0) && (
                       <div
                         className={`plot-marker status-${formStatus.toLowerCase().replace(" ", "")} plot-marker-active`}

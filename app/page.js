@@ -99,7 +99,7 @@ export default function UserPortal() {
       const dataUrl = canvas.toDataURL("image/png");
       const downloadLink = document.createElement("a");
       downloadLink.href = dataUrl;
-      
+
       const safeName = selectedLayoutName.replace(/[^a-z0-9]/gi, "_").toLowerCase();
       downloadLink.download = `SSV_Layout_${safeName}.png`;
       document.body.appendChild(downloadLink);
@@ -130,8 +130,6 @@ export default function UserPortal() {
         return "var(--color-registered)";
       case "Booked":
         return "var(--color-booked)";
-      case "On Hold":
-        return "var(--color-onhold)";
       default:
         return "#fff";
     }
@@ -142,7 +140,7 @@ export default function UserPortal() {
       {/* Top Navbar */}
       <nav className="admin-navbar">
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <img src="/logo.jpg" alt="Sri Sidhi Vinayakaa Logo" style={{ height: "60px", width: "60px", borderRadius: "50%", border: "1.5px solid var(--border-light)", objectFit: "cover" }} />
+          <img src="/logo.jpg" alt="Sri Sidhi Vinayakaa Logo" style={{ height: "90px", width: "90px", borderRadius: "50%", border: "1.5px solid var(--border-light)", objectFit: "cover" }} />
           <div className="logo-area">SRI SIDHI VINAYAKAA DEVELOPERS</div>
         </div>
         <div>
@@ -164,8 +162,8 @@ export default function UserPortal() {
       <div className="container fade-in">
         {/* Header Title */}
         <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-          <h1>Interactive Plot Layout</h1>
-          <p>Select a layout drawing and click on any circular plot marker to view its dimensions.</p>
+          <h1 style={{ color: "var(--color-available)", fontSize: "1.8rem" }}>Greatway For a Better Future</h1>
+          <p style={{ color: "var(--color-registered)", fontSize: "1.2rem" }}>మంచి భవిష్యత్తు కోసం గొప్ప మార్గం</p>
         </div>
 
         {/* Loading list state */}
@@ -183,7 +181,7 @@ export default function UserPortal() {
         ) : (
           <div>
             {/* Header Control Panel: Layout Selector Switcher & Stats Legends */}
-            <div className="glass-card control-panel-grid">
+            <div className="glass-card control-panel-grid" style={{ backgroundColor: "#d6d7c3ff" }}>
               {/* Layout Switcher Selection */}
               <div>
                 <label className="form-label" style={{ marginBottom: "0.4rem" }}>Select Layout Sheet</label>
@@ -202,21 +200,17 @@ export default function UserPortal() {
 
               {/* Legends list */}
               <div className="control-panel-legends">
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <span style={{ width: 12, height: 12, borderRadius: "50%", background: "var(--color-available)" }}></span>
-                  <span>Available ({plots.filter((p) => p.status === "Available").length})</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "1.1rem", fontWeight: "700" }}>
+                  <span style={{ width: 30, height: 30, borderRadius: "2px", border: "3px solid #ffffff", background: "var(--color-available)", boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }}></span>
+                  <span style={{ color: "var(--color-available)" }}>Available ({plots.filter((p) => p.status === "Available").length})</span>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <span style={{ width: 12, height: 12, borderRadius: "50%", background: "var(--color-registered)" }}></span>
-                  <span>Registered ({plots.filter((p) => p.status === "Registered").length})</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "1.1rem", fontWeight: "700" }}>
+                  <span style={{ width: 30, height: 30, borderRadius: "2px", border: "3px solid #ffffff", background: "var(--color-registered)", boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }}></span>
+                  <span style={{ color: "var(--color-registered)" }}>Registered ({plots.filter((p) => p.status === "Registered").length})</span>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <span style={{ width: 12, height: 12, borderRadius: "50%", background: "var(--color-booked)" }}></span>
-                  <span>Booked ({plots.filter((p) => p.status === "Booked").length})</span>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <span style={{ width: 12, height: 12, borderRadius: "50%", background: "var(--color-onhold)" }}></span>
-                  <span>On Hold ({plots.filter((p) => p.status === "On Hold").length})</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "1.1rem", fontWeight: "700" }}>
+                  <span style={{ width: 30, height: 30, borderRadius: "2px", border: "3px solid #ffffff", background: "var(--color-booked)", boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }}></span>
+                  <span style={{ color: "var(--color-booked)" }}>Booked ({plots.filter((p) => p.status === "Booked").length})</span>
                 </div>
               </div>
             </div>
@@ -242,9 +236,8 @@ export default function UserPortal() {
                     {plots.map((plot) => (
                       <div
                         key={plot._id}
-                        className={`plot-marker status-${plot.status.toLowerCase().replace(" ", "")} ${
-                          selectedPlot?._id === plot._id ? "plot-marker-active" : ""
-                        }`}
+                        className={`plot-marker status-${plot.status.toLowerCase().replace(" ", "")} ${selectedPlot?._id === plot._id ? "plot-marker-active" : ""
+                          }`}
                         style={{
                           left: `${plot.x}%`,
                           top: `${plot.y}%`,
