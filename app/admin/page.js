@@ -587,6 +587,30 @@ export default function AdminPage() {
   const formTotalPlotCost = Math.round((formSqYardCost + formFacingCharges) * formSqYards);
   const formBalanceAmount = Math.round(formTotalPlotCost - formPaidAmount);
 
+  // Calculate elapsed days from date of booking to today
+  const getBookingDays = (bookingDateStr) => {
+    if (!bookingDateStr) return "—";
+    try {
+      const parts = String(bookingDateStr).split("-");
+      let bookingDate;
+      if (parts.length === 3) {
+        bookingDate = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      } else {
+        bookingDate = new Date(bookingDateStr);
+      }
+      if (isNaN(bookingDate.getTime())) return "—";
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const bookingMidnight = new Date(bookingDate.getFullYear(), bookingDate.getMonth(), bookingDate.getDate());
+      const diffTime = today.getTime() - bookingMidnight.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays < 0) return "0 days";
+      return diffDays === 1 ? "1 day" : `${diffDays} days`;
+    } catch {
+      return "—";
+    }
+  };
+
   // Customer metrics for overview
   const totalCustomersCount = customers.length;
   const totalAgreedValue = customers.reduce((sum, c) => sum + (Number(c.totalPlotCost) || 0), 0);
@@ -1446,6 +1470,7 @@ export default function AdminPage() {
                             <th>Total Plot Cost</th>
                             <th>Paid Amount</th>
                             <th>Balance Amount</th>
+                            <th>No.of Days</th>
                             <th>TL Name</th>
                             <th style={{ textAlign: "center" }}>Edit/Delete</th>
                           </tr>
@@ -1477,6 +1502,9 @@ export default function AdminPage() {
                               </td>
                               <td className={Number(cust.balanceAmount) <= 0 ? "badge-balance-zero" : "badge-balance-due"}>
                                 ₹{Number(cust.balanceAmount ?? (Number(cust.totalPlotCost || 0) - Number(cust.paidAmount || 0))).toLocaleString("en-IN")}
+                              </td>
+                              <td style={{ fontWeight: 600, color: "var(--text-main)" }}>
+                                {getBookingDays(cust.dateOfBooking)}
                               </td>
                               <td>{cust.tlName || "—"}</td>
                               <td style={{ textAlign: "center" }}>

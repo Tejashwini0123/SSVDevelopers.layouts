@@ -699,7 +699,7 @@ p {
 
 .customer-table thead {
   background: #f8fafc;
-  border-bottom: 2px solid var(--border-light);
+  border-bottom: 2px solid #000000;
 }
 
 .customer-table th {
@@ -707,13 +707,18 @@ p {
   font-weight: 600;
   color: var(--text-main);
   white-space: nowrap;
+  border-bottom: 2px solid #000000;
 }
 
 .customer-table td {
   padding: 0.85rem 1rem;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid #000000;
   color: var(--text-main);
   white-space: nowrap;
+}
+
+.customer-table tbody tr {
+  border-bottom: 1px solid #000000;
 }
 
 .customer-table tbody tr:hover {
@@ -721,7 +726,7 @@ p {
 }
 
 .customer-table tbody tr:last-child td {
-  border-bottom: none;
+  border-bottom: 1px solid #000000;
 }
 
 .badge-balance-zero {
