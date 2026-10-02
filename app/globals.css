@@ -862,3 +862,184 @@ p {
 .inline-customer-form {
   animation: fadeIn 0.2s ease-out;
 }
+
+/* Download Customer Table Button & Dropdown Menu */
+.download-btn-container {
+  position: relative;
+  display: inline-block;
+}
+
+.btn-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: #ffffff;
+  color: #1e293b;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 0.45rem 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.btn-download:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+}
+
+.btn-download:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.download-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14), 0 4px 10px rgba(0, 0, 0, 0.05);
+  min-width: 260px;
+  z-index: 1000;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.download-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease;
+}
+
+.download-menu-item:hover {
+  background: #f1f5f9;
+}
+
+.download-menu-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.download-menu-item-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.download-menu-item-desc {
+  font-size: 0.72rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.customer-table tfoot td {
+  padding: 0.85rem 1rem;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  vertical-align: middle;
+}
+
+/* Clean Print Media Styling */
+@page {
+  size: landscape;
+  margin: 8mm;
+}
+
+@media print {
+  html, body {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .printable-customer-card,
+  .printable-customer-card * {
+    visibility: visible;
+  }
+
+  .printable-customer-card {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0.5rem !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #ffffff !important;
+    overflow: visible !important;
+  }
+
+  .customer-table-wrapper {
+    overflow: visible !important;
+    width: 100% !important;
+    box-shadow: none !important;
+    border: 1px solid #cbd5e1 !important;
+  }
+
+  .customer-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    table-layout: auto !important;
+    font-size: 0.72rem !important;
+  }
+
+  .customer-table th,
+  .customer-table td {
+    padding: 0.4rem 0.45rem !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    border: 1px solid #94a3b8 !important;
+  }
+
+  .customer-table th {
+    background: #f1f5f9 !important;
+    font-size: 0.7rem !important;
+    white-space: nowrap !important;
+  }
+
+  .badge-plot-no,
+  .badge-paid-amount,
+  .badge-balance-zero,
+  .badge-balance-due,
+  .badge {
+    padding: 0.15rem 0.35rem !important;
+    font-size: 0.68rem !important;
+  }
+
+  .no-print,
+  [data-html2canvas-ignore="true"] {
+    display: none !important;
+  }
+}

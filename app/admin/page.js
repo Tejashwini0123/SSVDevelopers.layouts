@@ -64,6 +64,24 @@ export default function AdminPage() {
 
   const fileInputRef = useRef(null);
   const imageContainerRef = useRef(null);
+  const customerTableCardRef = useRef(null);
+  const downloadMenuRef = useRef(null);
+
+  const [showDownloadMenu, setShowDownloadMenu] = useState(false);
+  const [downloadingTable, setDownloadingTable] = useState(false);
+
+  // Close download dropdown on click outside
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (downloadMenuRef.current && !downloadMenuRef.current.contains(e.target)) {
+        setShowDownloadMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, []);
 
   // Check authentication on mount
   useEffect(() => {
@@ -646,6 +664,403 @@ export default function AdminPage() {
   const totalAgreedValue = customers.reduce((sum, c) => sum + (Number(c.totalPlotCost) || 0), 0);
   const totalCollections = customers.reduce((sum, c) => sum + (Number(c.paidAmount) || 0), 0);
   const totalBalanceDue = customers.reduce((sum, c) => sum + (Number(c.balanceAmount) || 0), 0);
+
+  // Download Customer Table as CSV / Excel
+  const handleDownloadCSV = () => {
+    if (customers.length === 0) return;
+    setShowDownloadMenu(false);
+
+    const currentLayout = layouts.find((l) => l._id === selectedLayoutId);
+    const layoutName = currentLayout?.name || "SSV Layout";
+    const safeName = layoutName.replace(/[^a-z0-9]/gi, "_");
+    const today = new Date().toISOString().split("T")[0];
+
+    const escapeCsv = (val) => {
+      if (val === null || val === undefined) return "";
+      const str = String(val);
+      if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const headers = [
+      "Sl.No",
+      "Customer Name",
+      "Date of Booking",
+      "Plot No",
+      "Sq yards",
+      "Sq yard Cost (Rs)",
+      "Facing",
+      "Facing Charges (Rs)",
+      "Total Plot Cost (Rs)",
+      "Paid Amount (Rs)",
+      "Balance Amount (Rs)",
+      "No.of Days",
+      "TL Name",
+    ];
+
+    const rows = customers.map((cust, idx) => {
+      const sqYards = cust.sqYards || "";
+      const sqYardCost = Number(cust.sqYardCost) || 0;
+      const facing = cust.facing || "";
+      const facingCharges = Number(cust.facingCharges) || 0;
+      const totalPlotCost = Number(cust.totalPlotCost || ((sqYardCost + facingCharges) * (Number(sqYards) || 0)));
+      const paidAmount = Number(cust.paidAmount) || 0;
+      const balanceAmount = Number(cust.balanceAmount ?? (totalPlotCost - paidAmount));
+      const days = getBookingDays(cust.dateOfBooking, balanceAmount, cust.clearedDate);
+
+      return [
+        idx + 1,
+        escapeCsv(cust.customerName),
+        escapeCsv(cust.dateOfBooking),
+        escapeCsv(`Plot #${cust.plotNo}`),
+        sqYards,
+        sqYardCost,
+        escapeCsv(facing),
+        facingCharges,
+        totalPlotCost,
+        paidAmount,
+        balanceAmount,
+        escapeCsv(days),
+        escapeCsv(cust.tlName || "—"),
+      ];
+    });
+
+    const summaryRow = [
+      "",
+      escapeCsv(`TOTALS (${customers.length} Customers)`),
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      totalAgreedValue,
+      totalCollections,
+      totalBalanceDue,
+      "",
+      "",
+    ];
+
+    const metaRows = [
+      [`Sri Sidhi Vinayakaa Developers - Customers Ledger (${layoutName})`],
+      [`Export Date: ${today}`, `Total Customers: ${customers.length}`, `Total Plot Cost: Rs.${totalAgreedValue}`, `Total Paid: Rs.${totalCollections}`, `Total Balance Due: Rs.${totalBalanceDue}`],
+      [],
+    ];
+
+    const allLines = [
+      ...metaRows.map((r) => r.map(escapeCsv).join(",")),
+      headers.map(escapeCsv).join(","),
+      ...rows.map((r) => r.join(",")),
+      summaryRow.join(","),
+    ];
+
+    const csvContent = "\uFEFF" + allLines.join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `SSV_${safeName}_Customers_${today}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Download Customer Table as PNG Image
+  const handleDownloadPNG = async () => {
+    if (!customerTableCardRef.current || customers.length === 0) return;
+    setDownloadingTable(true);
+    setShowDownloadMenu(false);
+
+    const cardElement = customerTableCardRef.current;
+    const table = cardElement.querySelector(".customer-table");
+    const tableWrapper = cardElement.querySelector(".customer-table-wrapper");
+
+    const prevCardWidth = cardElement.style.width;
+    const prevCardMinWidth = cardElement.style.minWidth;
+    const prevCardMaxWidth = cardElement.style.maxWidth;
+    const prevTableOverflow = tableWrapper ? tableWrapper.style.overflowX : "";
+    const prevTableWidth = tableWrapper ? tableWrapper.style.width : "";
+
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+      const currentLayout = layouts.find((l) => l._id === selectedLayoutId);
+      const layoutName = currentLayout?.name || "SSV Layout";
+      const safeName = layoutName.replace(/[^a-z0-9]/gi, "_");
+      const today = new Date().toISOString().split("T")[0];
+
+      // Measure full required width so all 13 columns (including TL Name) fit with generous padding
+      const fullTableWidth = table ? Math.max(table.scrollWidth, table.offsetWidth) : cardElement.scrollWidth;
+      const targetWidth = Math.max(fullTableWidth + 100, 1420);
+
+      cardElement.style.width = `${targetWidth}px`;
+      cardElement.style.minWidth = `${targetWidth}px`;
+      cardElement.style.maxWidth = "none";
+      if (tableWrapper) {
+        tableWrapper.style.overflowX = "visible";
+        tableWrapper.style.width = "100%";
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 80));
+
+      // Dynamic scale: 2x for normal tables, 1.5x for 100+ customer records to ensure smooth memory allocation and prevent browser canvas limits
+      const isLargeDataset = cardElement.scrollHeight > 2800;
+      const exportScale = isLargeDataset ? 1.5 : 2;
+
+      const canvas = await html2canvas(cardElement, {
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+        scale: exportScale,
+        scrollX: 0,
+        scrollY: 0,
+        width: targetWidth,
+        height: cardElement.scrollHeight,
+        windowWidth: targetWidth + 60,
+        windowHeight: cardElement.scrollHeight + 100,
+      });
+
+      const dataUrl = canvas.toDataURL("image/png");
+      const link = document.createElement("a");
+      link.href = dataUrl;
+      link.download = `SSV_${safeName}_Customers_${today}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error("Error exporting customer table image:", err);
+      alert("Failed to export image. Please try downloading CSV instead.");
+    } finally {
+      cardElement.style.width = prevCardWidth;
+      cardElement.style.minWidth = prevCardMinWidth;
+      cardElement.style.maxWidth = prevCardMaxWidth;
+      if (tableWrapper) {
+        tableWrapper.style.overflowX = prevTableOverflow;
+        tableWrapper.style.width = prevTableWidth;
+      }
+      setDownloadingTable(false);
+    }
+  };
+
+  // Download Customer Table as PDF Document (Supports 100+ customers with auto multi-page layout)
+  const handleDownloadPDF = async () => {
+    if (customers.length === 0) return;
+    setDownloadingTable(true);
+    setShowDownloadMenu(false);
+
+    try {
+      const { jsPDF } = await import("jspdf");
+      const autoTableModule = await import("jspdf-autotable");
+      const autoTable = autoTableModule.default || autoTableModule;
+
+      const currentLayout = layouts.find((l) => l._id === selectedLayoutId);
+      const layoutName = currentLayout?.name || "SSV Layout";
+      const safeName = layoutName.replace(/[^a-z0-9]/gi, "_");
+      const today = new Date().toISOString().split("T")[0];
+
+      // Landscape A4 PDF: 297mm x 210mm
+      const doc = new jsPDF({
+        orientation: "landscape",
+        unit: "mm",
+        format: "a4",
+      });
+
+      // Header Banner
+      doc.setFillColor(109, 40, 217);
+      doc.rect(10, 8, 277, 16, "F");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(255, 255, 255);
+      doc.text("SRI SIDHI VINAYAKAA DEVELOPERS", 14, 15);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8.5);
+      doc.setTextColor(237, 233, 254);
+      doc.text(`Customer Allotments Ledger: ${layoutName}   |   Export Date: ${today}`, 14, 21);
+
+      // Summary Bar under banner
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(203, 213, 225);
+      doc.roundedRect(10, 27, 277, 9, 1.5, 1.5, "FD");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7.5);
+      doc.setTextColor(71, 85, 105);
+      doc.text(`CUSTOMERS: ${customers.length}`, 14, 33);
+
+      doc.setTextColor(109, 40, 217);
+      doc.text(`TOTAL PLOT COST: Rs.${totalAgreedValue.toLocaleString("en-IN")}`, 55, 33);
+
+      doc.setTextColor(5, 150, 105);
+      doc.text(`TOTAL PAID: Rs.${totalCollections.toLocaleString("en-IN")}`, 135, 33);
+
+      doc.setTextColor(totalBalanceDue <= 0 ? 22 : 220, totalBalanceDue <= 0 ? 163 : 38, totalBalanceDue <= 0 ? 74 : 38);
+      doc.text(`TOTAL BALANCE: Rs.${totalBalanceDue.toLocaleString("en-IN")}`, 210, 33);
+
+      // Prepare Table Data for autoTable
+      const head = [
+        [
+          "Sl.No",
+          "Customer Name",
+          "Date of Booking",
+          "Plot No",
+          "Sq yds",
+          "Sq yard Cost",
+          "Facing",
+          "Facing Chg",
+          "Total Plot Cost",
+          "Paid Amount",
+          "Balance Amount",
+          "No.of Days",
+          "TL Name",
+        ],
+      ];
+
+      const body = customers.map((cust, idx) => {
+        const sqYards = cust.sqYards || "—";
+        const sqYardCost = Number(cust.sqYardCost) || 0;
+        const facing = cust.facing || "—";
+        const facingCharges = Number(cust.facingCharges) || 0;
+        const totalPlotCost = Number(cust.totalPlotCost || ((sqYardCost + facingCharges) * (Number(sqYards) || 0)));
+        const paidAmount = Number(cust.paidAmount) || 0;
+        const balanceAmount = Number(cust.balanceAmount ?? (totalPlotCost - paidAmount));
+        const days = getBookingDays(cust.dateOfBooking, balanceAmount, cust.clearedDate);
+
+        return [
+          idx + 1,
+          cust.customerName || "—",
+          cust.dateOfBooking || "—",
+          `#${cust.plotNo}`,
+          sqYards,
+          sqYardCost ? `Rs.${sqYardCost.toLocaleString("en-IN")}` : "—",
+          facing,
+          facingCharges ? `Rs.${facingCharges.toLocaleString("en-IN")}` : "Rs.0",
+          `Rs.${totalPlotCost.toLocaleString("en-IN")}`,
+          `Rs.${paidAmount.toLocaleString("en-IN")}`,
+          `Rs.${balanceAmount.toLocaleString("en-IN")}`,
+          days,
+          cust.tlName || "—",
+        ];
+      });
+
+      const foot = [
+        [
+          "",
+          `TOTALS (${customers.length} Customers)`,
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          `Rs.${totalAgreedValue.toLocaleString("en-IN")}`,
+          `Rs.${totalCollections.toLocaleString("en-IN")}`,
+          `Rs.${totalBalanceDue.toLocaleString("en-IN")}`,
+          totalBalanceDue <= 0 ? "All Cleared" : "Balance Due",
+          "",
+        ],
+      ];
+
+      autoTable(doc, {
+        head: head,
+        body: body,
+        foot: foot,
+        startY: 39,
+        margin: { top: 14, left: 10, right: 10, bottom: 12 },
+        theme: "grid",
+        showHead: "everyPage",
+        showFoot: "lastPage",
+        styles: {
+          font: "helvetica",
+          fontSize: 7.2,
+          cellPadding: { top: 2, right: 2, bottom: 2, left: 2 },
+          lineColor: [203, 213, 225],
+          lineWidth: 0.2,
+          valign: "middle",
+          textColor: [15, 23, 42],
+        },
+        headStyles: {
+          fillColor: [109, 40, 217],
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          fontSize: 7.5,
+          halign: "left",
+        },
+        footStyles: {
+          fillColor: [241, 245, 249],
+          textColor: [15, 23, 42],
+          fontStyle: "bold",
+          fontSize: 7.5,
+        },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252],
+        },
+        columnStyles: {
+          0: { cellWidth: 10, halign: "center" },
+          1: { cellWidth: 33, fontStyle: "bold" },
+          2: { cellWidth: 20 },
+          3: { cellWidth: 14, halign: "center", fontStyle: "bold", textColor: [109, 40, 217] },
+          4: { cellWidth: 14, halign: "center" },
+          5: { cellWidth: 20, halign: "right" },
+          6: { cellWidth: 20, halign: "center" },
+          7: { cellWidth: 18, halign: "right" },
+          8: { cellWidth: 25, halign: "right", fontStyle: "bold" },
+          9: { cellWidth: 24, halign: "right", fontStyle: "bold", textColor: [5, 150, 105] },
+          10: { cellWidth: 24, halign: "right", fontStyle: "bold" },
+          11: { cellWidth: 18, halign: "center" },
+          12: { cellWidth: 27, fontStyle: "bold", textColor: [71, 85, 105] },
+        },
+        didParseCell: (data) => {
+          if (data.section === "body" && data.column.index === 10) {
+            const rawVal = data.cell.raw;
+            if (rawVal === "Rs.0") {
+              data.cell.styles.textColor = [22, 163, 74];
+            } else {
+              data.cell.styles.textColor = [220, 38, 38];
+            }
+          }
+        },
+      });
+
+      // Accurate Multi-Page Headers & Footers (e.g. "Page 1 of 5" for 100+ customers)
+      const totalPages = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+
+        // On Page 2 and above, print a clean running top banner
+        if (i > 1) {
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(8);
+          doc.setTextColor(109, 40, 217);
+          doc.text(`SRI SIDHI VINAYAKAA DEVELOPERS — ${layoutName} (Continued)`, 14, 9);
+          doc.setDrawColor(226, 232, 240);
+          doc.setLineWidth(0.3);
+          doc.line(14, 11, 283, 11);
+        }
+
+        // Bottom Page Numbers on every page
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7.5);
+        doc.setTextColor(148, 163, 184);
+        doc.text(
+          `Sri Sidhi Vinayakaa Developers   |   Page ${i} of ${totalPages}`,
+          148.5,
+          205,
+          { align: "center" }
+        );
+      }
+
+      doc.save(`SSV_${safeName}_Customers_${today}.pdf`);
+    } catch (err) {
+      console.error("Error generating PDF:", err);
+      alert("Failed to export PDF: " + err.message);
+    } finally {
+      setDownloadingTable(false);
+    }
+  };
 
   if (checkingAuth) {
     return (
@@ -1454,8 +1869,8 @@ export default function AdminPage() {
                 )}
 
                 {/* 3. CUSTOMERS TABLE (ALWAYS DISPLAYED BELOW THE FORM OR DIRECTLY BELOW THE SUMMARY) */}
-                <div className="glass-card fade-in" style={{ padding: "1.5rem" }}>
-                  <div style={{ marginBottom: "1rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div className="glass-card fade-in printable-customer-card" ref={customerTableCardRef} style={{ padding: "1.5rem" }}>
+                  <div style={{ marginBottom: "1rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.75rem" }}>
                     <div>
                       <h3 style={{ margin: 0, fontSize: "1.2rem" }}>
                         Customers List ({layouts.find((l) => l._id === selectedLayoutId)?.name || "Current Layout"})
@@ -1464,15 +1879,108 @@ export default function AdminPage() {
                         Showing all saved customer allotments for this layout.
                       </p>
                     </div>
-                    {!showCustomerForm && (
-                      <button
-                        className="btn btn-primary"
-                        onClick={handleOpenAddCustomer}
-                        style={{ fontSize: "0.88rem", padding: "0.45rem 1.15rem", fontWeight: 600 }}
-                      >
-                        + Add Customer
-                      </button>
-                    )}
+
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }} data-html2canvas-ignore="true" className="no-print">
+                      {/* Download Table Button with Dropdown */}
+                      <div className="download-btn-container" ref={downloadMenuRef}>
+                        <button
+                          type="button"
+                          className="btn-download"
+                          onClick={() => setShowDownloadMenu((prev) => !prev)}
+                          disabled={customers.length === 0 || downloadingTable}
+                          title={customers.length === 0 ? "No customer records to download" : "Download Customer Table"}
+                        >
+                          {downloadingTable ? (
+                            <>
+                              <div className="loading-spinner" style={{ width: 14, height: 14 }}></div>
+                              <span>Generating...</span>
+                            </>
+                          ) : (
+                            <>
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                              </svg>
+                              <span>Download</span>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "transform 0.2s", transform: showDownloadMenu ? "rotate(180deg)" : "none" }}>
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                              </svg>
+                            </>
+                          )}
+                        </button>
+
+                        {showDownloadMenu && (
+                          <div className="download-dropdown-menu fade-in">
+                            <button
+                              type="button"
+                              className="download-menu-item"
+                              onClick={handleDownloadCSV}
+                            >
+                              <div className="download-menu-item-icon" style={{ background: "rgba(16, 185, 129, 0.12)", color: "#059669" }}>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                  <polyline points="14 2 14 8 20 8"></polyline>
+                                  <line x1="8" y1="13" x2="16" y2="13"></line>
+                                  <line x1="8" y1="17" x2="16" y2="17"></line>
+                                  <polyline points="10 9 9 9 8 9"></polyline>
+                                </svg>
+                              </div>
+                              <div>
+                                <div className="download-menu-item-title">Excel / CSV (.csv)</div>
+                                <div className="download-menu-item-desc">Spreadsheet for Excel & Google Sheets</div>
+                              </div>
+                            </button>
+
+                            <button
+                              type="button"
+                              className="download-menu-item"
+                              onClick={handleDownloadPDF}
+                            >
+                              <div className="download-menu-item-icon" style={{ background: "rgba(220, 38, 38, 0.12)", color: "#dc2626" }}>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                  <polyline points="14 2 14 8 20 8"></polyline>
+                                  <line x1="9" y1="15" x2="15" y2="15"></line>
+                                </svg>
+                              </div>
+                              <div>
+                                <div className="download-menu-item-title">PDF Document (.pdf)</div>
+                                <div className="download-menu-item-desc">Full landscape A4 PDF document</div>
+                              </div>
+                            </button>
+
+                            <button
+                              type="button"
+                              className="download-menu-item"
+                              onClick={handleDownloadPNG}
+                            >
+                              <div className="download-menu-item-icon" style={{ background: "rgba(109, 40, 217, 0.12)", color: "#6d28d9" }}>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                  <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                  <polyline points="21 15 16 10 5 21"></polyline>
+                                </svg>
+                              </div>
+                              <div>
+                                <div className="download-menu-item-title">Image (.png)</div>
+                                <div className="download-menu-item-desc">High-resolution snapshot for sharing</div>
+                              </div>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {!showCustomerForm && (
+                        <button
+                          className="btn btn-primary"
+                          onClick={handleOpenAddCustomer}
+                          style={{ fontSize: "0.88rem", padding: "0.45rem 1.15rem", fontWeight: 600 }}
+                        >
+                          + Add Customer
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {loadingCustomers ? (
@@ -1501,8 +2009,8 @@ export default function AdminPage() {
                             <th>Paid Amount</th>
                             <th>Balance Amount</th>
                             <th>No.of Days</th>
-                            <th>TL Name</th>
-                            <th style={{ textAlign: "center" }}>Edit/Delete</th>
+                            <th style={{ minWidth: "115px", whiteSpace: "nowrap" }}>TL Name</th>
+                            <th style={{ textAlign: "center" }} data-html2canvas-ignore="true" className="no-print">Edit/Delete</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1548,8 +2056,8 @@ export default function AdminPage() {
                               <td style={{ fontWeight: 600, color: "var(--text-main)" }}>
                                 {getBookingDays(cust.dateOfBooking, cust.balanceAmount ?? (Number(cust.totalPlotCost || 0) - Number(cust.paidAmount || 0)), cust.clearedDate)}
                               </td>
-                              <td style={{ fontWeight: 500, color: "#475569" }}>{cust.tlName || "—"}</td>
-                              <td style={{ textAlign: "center" }}>
+                              <td style={{ fontWeight: 500, color: "#475569", whiteSpace: "nowrap" }}>{cust.tlName || "—"}</td>
+                              <td style={{ textAlign: "center" }} data-html2canvas-ignore="true" className="no-print">
                                 <div style={{ display: "inline-flex", gap: "0.4rem" }}>
                                   <button
                                     className="btn-sm btn-edit"
@@ -1570,6 +2078,29 @@ export default function AdminPage() {
                             </tr>
                           ))}
                         </tbody>
+                        {customers.length > 0 && (
+                          <tfoot>
+                            <tr style={{ background: "#f8fafc", fontWeight: 700 }}>
+                              <td colSpan={8} style={{ textAlign: "right", color: "var(--text-main)", fontWeight: 700, fontSize: "0.9rem" }}>
+                                Total Summary ({customers.length} Customers):
+                              </td>
+                              <td style={{ fontWeight: 800, color: "#6d28d9", fontSize: "0.92rem" }}>
+                                ₹{totalAgreedValue.toLocaleString("en-IN")}
+                              </td>
+                              <td style={{ fontWeight: 800, color: "#059669", fontSize: "0.92rem" }}>
+                                ₹{totalCollections.toLocaleString("en-IN")}
+                              </td>
+                              <td style={{ fontWeight: 800, color: totalBalanceDue <= 0 ? "#16a34a" : "#dc2626", fontSize: "0.92rem" }}>
+                                ₹{totalBalanceDue.toLocaleString("en-IN")}
+                              </td>
+                              <td style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>
+                                {totalBalanceDue <= 0 ? "All Cleared" : "Balance Due"}
+                              </td>
+                              <td style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>—</td>
+                              <td data-html2canvas-ignore="true" className="no-print"></td>
+                            </tr>
+                          </tfoot>
+                        )}
                       </table>
                     </div>
                   )}
