@@ -34,8 +34,18 @@ export async function GET(request) {
       query.layoutId = layoutId;
     }
 
-    // FCFS order: First customer created is Sl.No 1, second is Sl.No 2, etc.
-    const customers = await Customer.find(query).sort({ createdAt: 1 });
+    // FCFS order: First Come (Date of Booking) First Served (earliest booking is Sl.No 1)
+    const customers = await Customer.find(query);
+    customers.sort((a, b) => {
+      const dateA = a.dateOfBooking?.trim();
+      const dateB = b.dateOfBooking?.trim();
+      if (dateA && dateB && dateA !== dateB) {
+        return dateA.localeCompare(dateB);
+      }
+      if (dateA && !dateB) return -1;
+      if (!dateA && dateB) return 1;
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    });
     return NextResponse.json(customers);
   } catch (error) {
     return NextResponse.json(
@@ -82,6 +92,13 @@ export async function POST(request) {
     const calculatedTotalPlotCost = Math.round((parsedSqYardCost + parsedFacingCharges) * parsedSqYards);
     const calculatedBalanceAmount = Math.round(calculatedTotalPlotCost - parsedPaidAmount);
 
+    let clearedDate = "";
+    if (calculatedBalanceAmount <= 0) {
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+      clearedDate = dateOfBooking || todayStr;
+    }
+
     await dbConnect();
 
     let layoutName = "";
@@ -106,6 +123,7 @@ export async function POST(request) {
       paidAmount: parsedPaidAmount,
       balanceAmount: calculatedBalanceAmount,
       tlName: tlName?.trim() || "",
+      clearedDate,
     });
 
     return NextResponse.json({ success: true, customer: newCustomer }, { status: 201 });

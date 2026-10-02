@@ -78,6 +78,16 @@ export async function PUT(request, { params }) {
     customer.balanceAmount = calculatedBalanceAmount;
     customer.tlName = tlName !== undefined ? tlName.trim() : customer.tlName;
 
+    if (calculatedBalanceAmount <= 0) {
+      if (!customer.clearedDate) {
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+        customer.clearedDate = customer.dateOfBooking === todayStr ? customer.dateOfBooking : todayStr;
+      }
+    } else {
+      customer.clearedDate = "";
+    }
+
     if (layoutId) {
       customer.layoutId = layoutId;
       const layout = await Layout.findById(layoutId);

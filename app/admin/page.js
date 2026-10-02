@@ -436,7 +436,18 @@ export default function AdminPage() {
       const res = await fetch(`/api/customers?layoutId=${layoutId}`);
       const data = await res.json();
       if (res.ok) {
-        setCustomers(Array.isArray(data) ? data : []);
+        const list = Array.isArray(data) ? data : [];
+        list.sort((a, b) => {
+          const dateA = a.dateOfBooking?.trim();
+          const dateB = b.dateOfBooking?.trim();
+          if (dateA && dateB && dateA !== dateB) {
+            return dateA.localeCompare(dateB);
+          }
+          if (dateA && !dateB) return -1;
+          if (!dateA && dateB) return 1;
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        });
+        setCustomers(list);
       } else {
         setCustomers([]);
       }
@@ -587,24 +598,43 @@ export default function AdminPage() {
   const formTotalPlotCost = Math.round((formSqYardCost + formFacingCharges) * formSqYards);
   const formBalanceAmount = Math.round(formTotalPlotCost - formPaidAmount);
 
-  // Calculate elapsed days from date of booking to today
-  const getBookingDays = (bookingDateStr) => {
+  // Calculate elapsed days from date of booking to today; when balance is 0, days stop counting
+  const getBookingDays = (bookingDateStr, balanceAmount, clearedDate) => {
     if (!bookingDateStr) return "—";
+    const bal = Number(balanceAmount);
+
     try {
-      const parts = String(bookingDateStr).split("-");
-      let bookingDate;
-      if (parts.length === 3) {
-        bookingDate = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-      } else {
-        bookingDate = new Date(bookingDateStr);
+      const parseDate = (dStr) => {
+        if (!dStr) return null;
+        const parts = String(dStr).split("-");
+        if (parts.length === 3) {
+          return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        }
+        const d = new Date(dStr);
+        return isNaN(d.getTime()) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      };
+
+      const bookingDate = parseDate(bookingDateStr);
+      if (!bookingDate) return "—";
+
+      // When balance is zero or less, days should not count; it stops when balance became 0
+      if (bal <= 0) {
+        if (clearedDate && clearedDate !== bookingDateStr) {
+          const cDate = parseDate(clearedDate);
+          if (cDate) {
+            const diffMs = cDate.getTime() - bookingDate.getTime();
+            const diffDays = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+            return diffDays === 1 ? "1 day" : `${diffDays} days`;
+          }
+        }
+        return "0 days";
       }
-      if (isNaN(bookingDate.getTime())) return "—";
+
+      // Balance is still due (> 0): count from booking date to today
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const bookingMidnight = new Date(bookingDate.getFullYear(), bookingDate.getMonth(), bookingDate.getDate());
-      const diffTime = today.getTime() - bookingMidnight.getTime();
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-      if (diffDays < 0) return "0 days";
+      const diffMs = today.getTime() - bookingDate.getTime();
+      const diffDays = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
       return diffDays === 1 ? "1 day" : `${diffDays} days`;
     } catch {
       return "—";
@@ -1478,35 +1508,47 @@ export default function AdminPage() {
                         <tbody>
                           {customers.map((cust, idx) => (
                             <tr key={cust._id}>
-                              <td>{idx + 1}</td>
-                              <td style={{ fontWeight: 600 }}>{cust.customerName}</td>
-                              <td>{cust.dateOfBooking || "—"}</td>
                               <td>
-                                <span style={{ fontWeight: 600, color: "var(--accent)" }}>#{cust.plotNo}</span>
-                              </td>
-                              <td>{cust.sqYards ? `${cust.sqYards}` : "—"}</td>
-                              <td>{cust.sqYardCost ? `₹${Number(cust.sqYardCost).toLocaleString("en-IN")}` : "—"}</td>
-                              <td>
-                                {cust.facing ? (
-                                  <span className="badge" style={{ background: "rgba(109, 40, 217, 0.08)", color: "var(--accent)", border: "1px solid rgba(109, 40, 217, 0.2)" }}>
-                                    {cust.facing}
-                                  </span>
-                                ) : ""}
-                              </td>
-                              <td>{cust.facingCharges ? `₹${Number(cust.facingCharges).toLocaleString("en-IN")}` : "₹0"}</td>
-                              <td style={{ fontWeight: 600 }}>
-                                ₹{Number(cust.totalPlotCost || ((Number(cust.sqYardCost || 0) + Number(cust.facingCharges || 0)) * Number(cust.sqYards || 0))).toLocaleString("en-IN")}
-                              </td>
-                              <td style={{ color: "var(--color-available)", fontWeight: 600 }}>
-                                ₹{Number(cust.paidAmount || 0).toLocaleString("en-IN")}
-                              </td>
-                              <td className={Number(cust.balanceAmount) <= 0 ? "badge-balance-zero" : "badge-balance-due"}>
-                                ₹{Number(cust.balanceAmount ?? (Number(cust.totalPlotCost || 0) - Number(cust.paidAmount || 0))).toLocaleString("en-IN")}
+                                <span style={{ color: "#64748b", fontWeight: 700, fontSize: "0.85rem" }}>
+                                  {idx + 1}
+                                </span>
                               </td>
                               <td style={{ fontWeight: 600, color: "var(--text-main)" }}>
-                                {getBookingDays(cust.dateOfBooking)}
+                                {cust.customerName}
                               </td>
-                              <td>{cust.tlName || "—"}</td>
+                              <td style={{ color: "#475569", fontWeight: 500 }}>
+                                {cust.dateOfBooking || "—"}
+                              </td>
+                              <td>
+                                <span className="badge-plot-no">#{cust.plotNo}</span>
+                              </td>
+                              <td style={{ fontWeight: 500 }}>{cust.sqYards ? `${cust.sqYards}` : "—"}</td>
+                              <td style={{ fontWeight: 500 }}>{cust.sqYardCost ? `₹${Number(cust.sqYardCost).toLocaleString("en-IN")}` : "—"}</td>
+                              <td>
+                                {cust.facing ? (
+                                  <span className="badge" style={{ background: "rgba(109, 40, 217, 0.08)", color: "var(--accent)", border: "1px solid rgba(109, 40, 217, 0.2)", textTransform: "uppercase" }}>
+                                    {cust.facing}
+                                  </span>
+                                ) : "—"}
+                              </td>
+                              <td style={{ color: "#64748b" }}>{cust.facingCharges ? `₹${Number(cust.facingCharges).toLocaleString("en-IN")}` : "₹0"}</td>
+                              <td style={{ fontWeight: 700, color: "var(--text-main)" }}>
+                                ₹{Number(cust.totalPlotCost || ((Number(cust.sqYardCost || 0) + Number(cust.facingCharges || 0)) * Number(cust.sqYards || 0))).toLocaleString("en-IN")}
+                              </td>
+                              <td>
+                                <span className="badge-paid-amount">
+                                  ₹{Number(cust.paidAmount || 0).toLocaleString("en-IN")}
+                                </span>
+                              </td>
+                              <td>
+                                <span className={Number(cust.balanceAmount ?? (Number(cust.totalPlotCost || 0) - Number(cust.paidAmount || 0))) <= 0 ? "badge-balance-zero" : "badge-balance-due"}>
+                                  ₹{Number(cust.balanceAmount ?? (Number(cust.totalPlotCost || 0) - Number(cust.paidAmount || 0))).toLocaleString("en-IN")}
+                                </span>
+                              </td>
+                              <td style={{ fontWeight: 600, color: "var(--text-main)" }}>
+                                {getBookingDays(cust.dateOfBooking, cust.balanceAmount ?? (Number(cust.totalPlotCost || 0) - Number(cust.paidAmount || 0)), cust.clearedDate)}
+                              </td>
+                              <td style={{ fontWeight: 500, color: "#475569" }}>{cust.tlName || "—"}</td>
                               <td style={{ textAlign: "center" }}>
                                 <div style={{ display: "inline-flex", gap: "0.4rem" }}>
                                   <button
