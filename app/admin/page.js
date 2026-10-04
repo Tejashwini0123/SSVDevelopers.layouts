@@ -43,7 +43,7 @@ export default function AdminPage() {
   const [submittingForm, setSubmittingForm] = useState(false);
 
   // View tabs & Customers state
-  const [activeTab, setActiveTab] = useState("canvas"); // "canvas" | "customers"
+  const [activeTab, setActiveTab] = useState("canvas"); // "canvas" | "customers" | "regCustomers"
   const [customers, setCustomers] = useState([]);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
   const [showCustomerForm, setShowCustomerForm] = useState(false);
@@ -62,19 +62,42 @@ export default function AdminPage() {
   const [customerFormError, setCustomerFormError] = useState("");
   const [submittingCustomer, setSubmittingCustomer] = useState(false);
 
+  // Reg.Customers state
+  const [regCustomers, setRegCustomers] = useState([]);
+  const [loadingRegCustomers, setLoadingRegCustomers] = useState(false);
+  const [showRegCustomerForm, setShowRegCustomerForm] = useState(false);
+  const [editingRegCustomer, setEditingRegCustomer] = useState(null);
+  const [regCustomerForm, setRegCustomerForm] = useState({
+    sNo: "",
+    customerName: "",
+    sqYards: "",
+    facing: "",
+    regDate: "",
+    documentNo: "",
+  });
+  const [regCustomerFormError, setRegCustomerFormError] = useState("");
+  const [submittingRegCustomer, setSubmittingRegCustomer] = useState(false);
+
   const fileInputRef = useRef(null);
   const imageContainerRef = useRef(null);
   const customerTableCardRef = useRef(null);
   const downloadMenuRef = useRef(null);
+  const regCustomerTableCardRef = useRef(null);
+  const regDownloadMenuRef = useRef(null);
 
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
   const [downloadingTable, setDownloadingTable] = useState(false);
+  const [showRegDownloadMenu, setShowRegDownloadMenu] = useState(false);
+  const [downloadingRegTable, setDownloadingRegTable] = useState(false);
 
-  // Close download dropdown on click outside
+  // Close download dropdowns on click outside
   useEffect(() => {
     const handleOutsideClick = (e) => {
       if (downloadMenuRef.current && !downloadMenuRef.current.contains(e.target)) {
         setShowDownloadMenu(false);
+      }
+      if (regDownloadMenuRef.current && !regDownloadMenuRef.current.contains(e.target)) {
+        setShowRegDownloadMenu(false);
       }
     };
     document.addEventListener("mousedown", handleOutsideClick);
@@ -145,6 +168,7 @@ export default function AdminPage() {
       setPlots([]);
       setSelectedPlot(null);
       setCustomers([]);
+      setRegCustomers([]);
     } catch {
       alert("Failed to logout cleanly.");
     }
@@ -164,11 +188,13 @@ export default function AdminPage() {
           setSelectedLayoutId(targetId);
           fetchLayoutDetails(targetId);
           fetchCustomers(targetId);
+          fetchRegCustomers(targetId);
         } else {
           setSelectedLayoutId("");
           setLayoutImage(null);
           setPlots([]);
           setCustomers([]);
+          setRegCustomers([]);
         }
       }
     } catch (err) {
@@ -215,9 +241,12 @@ export default function AdminPage() {
     setSelectedLayoutId(layoutId);
     fetchLayoutDetails(layoutId);
     fetchCustomers(layoutId);
+    fetchRegCustomers(layoutId);
     resetPlotForm();
     setShowCustomerForm(false);
     setEditingCustomer(null);
+    setShowRegCustomerForm(false);
+    setEditingRegCustomer(null);
   };
 
   // Handle uploading and processing new layout file in modal
@@ -1062,6 +1091,347 @@ export default function AdminPage() {
     }
   };
 
+  // Reg.Customers Management Handlers (Strictly bound to selectedLayoutId)
+  const fetchRegCustomers = async (layoutId = selectedLayoutId) => {
+    if (!layoutId) {
+      setRegCustomers([]);
+      return;
+    }
+    try {
+      setLoadingRegCustomers(true);
+      const res = await fetch(`/api/reg-customers?layoutId=${layoutId}`);
+      const data = await res.json();
+      if (res.ok) {
+        setRegCustomers(Array.isArray(data) ? data : []);
+      } else {
+        setRegCustomers([]);
+      }
+    } catch (err) {
+      console.error("Error fetching registered customers:", err);
+      setRegCustomers([]);
+    } finally {
+      setLoadingRegCustomers(false);
+    }
+  };
+
+  const handleOpenAddRegCustomer = () => {
+    setEditingRegCustomer(null);
+    setRegCustomerForm({
+      sNo: String(regCustomers.length + 1),
+      customerName: "",
+      sqYards: "",
+      facing: "",
+      regDate: new Date().toISOString().split("T")[0],
+      documentNo: "",
+    });
+    setRegCustomerFormError("");
+    setShowRegCustomerForm(true);
+  };
+
+  const handleOpenEditRegCustomer = (cust) => {
+    setEditingRegCustomer(cust);
+    setRegCustomerForm({
+      sNo: cust.sNo || "",
+      customerName: cust.customerName || "",
+      sqYards: cust.sqYards || "",
+      facing: cust.facing || "",
+      regDate: cust.regDate || "",
+      documentNo: cust.documentNo || "",
+    });
+    setRegCustomerFormError("");
+    setShowRegCustomerForm(true);
+  };
+
+  const handleRegCustomerFormSubmit = async (e) => {
+    e.preventDefault();
+    setRegCustomerFormError("");
+
+    if (!selectedLayoutId) {
+      setRegCustomerFormError("Please select a layout sheet first.");
+      return;
+    }
+
+    setSubmittingRegCustomer(true);
+    try {
+      const payload = {
+        ...regCustomerForm,
+        layoutId: selectedLayoutId,
+      };
+
+      let res;
+      if (editingRegCustomer) {
+        res = await fetch(`/api/reg-customers/${editingRegCustomer._id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        res = await fetch("/api/reg-customers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      const data = await res.json();
+      if (res.ok) {
+        setShowRegCustomerForm(false);
+        setEditingRegCustomer(null);
+        fetchRegCustomers(selectedLayoutId);
+      } else {
+        setRegCustomerFormError(data.error || "Failed to save registered customer.");
+      }
+    } catch {
+      setRegCustomerFormError("Server connection error.");
+    } finally {
+      setSubmittingRegCustomer(false);
+    }
+  };
+
+  const handleDeleteRegCustomer = async (cust) => {
+    const displayName = cust.customerName || `S.No ${cust.sNo}` || "this record";
+    if (!confirm(`Are you sure you want to delete registered customer "${displayName}"?`)) return;
+
+    try {
+      const res = await fetch(`/api/reg-customers/${cust._id}`, { method: "DELETE" });
+      if (res.ok) {
+        fetchRegCustomers(selectedLayoutId);
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to delete registered customer.");
+      }
+    } catch {
+      alert("Server error deleting registered customer.");
+    }
+  };
+
+  // Reg.Customer metrics for overview
+  const totalRegCustomersCount = regCustomers.length;
+  const totalRegSqYards = regCustomers.reduce((sum, c) => sum + (Number(c.sqYards) || 0), 0);
+
+  // Download Reg Customer Table as CSV / Excel
+  const handleDownloadRegCSV = () => {
+    if (regCustomers.length === 0) return;
+    setShowRegDownloadMenu(false);
+
+    const currentLayout = layouts.find((l) => l._id === selectedLayoutId);
+    const layoutName = currentLayout?.name || "SSV Layout";
+    const safeName = layoutName.replace(/[^a-z0-9]/gi, "_");
+    const today = new Date().toISOString().split("T")[0];
+
+    const escapeCsv = (val) => {
+      if (val === null || val === undefined) return "";
+      const str = String(val);
+      if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const headers = [
+      "S.No.",
+      "Customer Name",
+      "Sq.yards",
+      "Facing",
+      "Reg Date",
+      "Document No."
+    ];
+
+    const rows = regCustomers.map((cust, idx) => [
+      escapeCsv(cust.sNo || idx + 1),
+      escapeCsv(cust.customerName || ""),
+      escapeCsv(cust.sqYards || ""),
+      escapeCsv(cust.facing || ""),
+      escapeCsv(cust.regDate || ""),
+      escapeCsv(cust.documentNo || "")
+    ]);
+
+    const csvContent = [
+      [`Sri Sidhi Vinayakaa Developers - Registered Customers (${layoutName})`],
+      [`Export Date: ${today}`, `Total Registered Customers: ${regCustomers.length}`, `Total Sq. Yards: ${totalRegSqYards}`],
+      [],
+      headers,
+      ...rows,
+    ]
+      .map((row) => row.join(","))
+      .join("\r\n");
+
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `SSV_${safeName}_RegCustomers_${today}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Download Reg Customer Table as PNG Image
+  const handleDownloadRegPNG = async () => {
+    if (!regCustomerTableCardRef.current || regCustomers.length === 0) return;
+    setDownloadingRegTable(true);
+    setShowRegDownloadMenu(false);
+
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+      const currentLayout = layouts.find((l) => l._id === selectedLayoutId);
+      const layoutName = currentLayout?.name || "SSV Layout";
+      const safeName = layoutName.replace(/[^a-z0-9]/gi, "_");
+      const today = new Date().toISOString().split("T")[0];
+
+      const canvas = await html2canvas(regCustomerTableCardRef.current, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        useCORS: true,
+        logging: false,
+        ignoreElements: (element) => {
+          return (
+            element.classList?.contains("no-print") ||
+            element.getAttribute("data-html2canvas-ignore") === "true"
+          );
+        },
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const link = document.createElement("a");
+      link.href = imgData;
+      link.download = `SSV_${safeName}_RegCustomers_${today}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error("Error exporting Reg Customers table image:", err);
+      alert("Failed to export image.");
+    } finally {
+      setDownloadingRegTable(false);
+    }
+  };
+
+  // Download Reg Customer Table as PDF Document
+  const handleDownloadRegPDF = async () => {
+    if (regCustomers.length === 0) return;
+    setDownloadingRegTable(true);
+    setShowRegDownloadMenu(false);
+
+    try {
+      const { jsPDF } = await import("jspdf");
+      const autoTableModule = await import("jspdf-autotable");
+      const autoTable = autoTableModule.default || autoTableModule;
+
+      const currentLayout = layouts.find((l) => l._id === selectedLayoutId);
+      const layoutName = currentLayout?.name || "SSV Layout";
+      const safeName = layoutName.replace(/[^a-z0-9]/gi, "_");
+      const today = new Date().toISOString().split("T")[0];
+
+      const doc = new jsPDF({
+        orientation: "landscape",
+        unit: "mm",
+        format: "a4",
+      });
+
+      // Crimson / Ruby header for Registered Customers
+      doc.setFillColor(185, 28, 28);
+      doc.rect(0, 0, 297, 24, "F");
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.text("SRI SIDHI VINAYAKAA DEVELOPERS", 14, 11);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text(`REGISTERED CUSTOMERS  •  LAYOUT: ${layoutName.toUpperCase()}`, 14, 18);
+
+      doc.setFontSize(9);
+      doc.text(`Generated: ${today}`, 283, 18, { align: "right" });
+
+      // Summary Bar
+      doc.setFillColor(254, 242, 242);
+      doc.setDrawColor(254, 202, 202);
+      doc.roundedRect(14, 28, 269, 12, 2, 2, "FD");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(185, 28, 28);
+      doc.text(`REG. CUSTOMERS: ${regCustomers.length}`, 20, 35.5);
+      if (totalRegSqYards > 0) {
+        doc.text(`TOTAL SQ. YARDS: ${totalRegSqYards.toLocaleString("en-IN")}`, 80, 35.5);
+      }
+
+      const tableHeaders = [
+        "S.No.",
+        "Customer Name",
+        "Sq.yards",
+        "Facing",
+        "Reg Date",
+        "Document No.",
+      ];
+
+      const body = regCustomers.map((cust, idx) => [
+        cust.sNo || String(idx + 1),
+        cust.customerName || "—",
+        cust.sqYards || "—",
+        cust.facing || "—",
+        cust.regDate || "—",
+        cust.documentNo || "—",
+      ]);
+
+      autoTable(doc, {
+        head: [tableHeaders],
+        body: body,
+        startY: 44,
+        margin: { top: 30, right: 14, bottom: 20, left: 14 },
+        theme: "grid",
+        styles: {
+          fontSize: 8.5,
+          cellPadding: 2.8,
+          textColor: [30, 41, 59],
+          lineColor: [203, 213, 225],
+          lineWidth: 0.2,
+          valign: "middle",
+        },
+        headStyles: {
+          fillColor: [185, 28, 28],
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          fontSize: 9,
+          halign: "center",
+        },
+        columnStyles: {
+          0: { halign: "center", fontStyle: "bold", cellWidth: 20 },
+          1: { halign: "left", fontStyle: "bold", cellWidth: 70 },
+          2: { halign: "center", cellWidth: 35 },
+          3: { halign: "center", cellWidth: 40 },
+          4: { halign: "center", cellWidth: 40 },
+          5: { halign: "center", cellWidth: 64 },
+        },
+        alternateRowStyles: {
+          fillColor: [254, 242, 242],
+        },
+        didDrawPage: function (data) {
+          const pageCount = doc.internal.getNumberOfPages();
+          doc.setFontSize(8);
+          doc.setTextColor(148, 163, 184);
+          doc.setFont("helvetica", "normal");
+          doc.text(
+            `Sri Sidhi Vinayakaa Developers  •  Confidential Registered Customers Ledger  •  Page ${data.pageNumber} of ${pageCount}`,
+            148.5,
+            204,
+            { align: "center" }
+          );
+        },
+      });
+
+      doc.save(`SSV_${safeName}_RegCustomers_${today}.pdf`);
+    } catch (err) {
+      console.error("Error generating PDF:", err);
+      alert("Failed to export PDF: " + err.message);
+    } finally {
+      setDownloadingRegTable(false);
+    }
+  };
+
   if (checkingAuth) {
     return (
       <div className="admin-login-wrapper">
@@ -1214,7 +1584,7 @@ export default function AdminPage() {
                 {/* 2. DISTANCE between Layout Selector and Tabs */}
                 <div style={{ width: "2.5rem" }}></div>
 
-                {/* 3. Canvas & Bookings and Customers tabs WITH DISTANCE BETWEEN THEM */}
+                {/* 3. Canvas & Bookings, Customers, and Reg.Customers tabs */}
                 <div style={{ display: "flex", alignItems: "center", gap: "0.85rem" }}>
                   <button
                     type="button"
@@ -1250,24 +1620,51 @@ export default function AdminPage() {
                       padding: "0.5rem 1.15rem",
                       fontSize: "0.9rem",
                       borderRadius: "8px",
-                      fontWeight: 600,
+                      fontWeight: 700,
                       cursor: "pointer",
                       transition: "all 0.2s ease",
                       ...(activeTab === "customers"
                         ? {
-                            background: "linear-gradient(135deg, #6d28d9 0%, #d946ef 100%)",
+                            background: "linear-gradient(135deg, #15803d 0%, #16a34a 100%)",
                             color: "#ffffff",
                             border: "none",
-                            boxShadow: "0 4px 12px rgba(109, 40, 217, 0.35)",
+                            boxShadow: "0 4px 12px rgba(22, 163, 74, 0.35)",
                           }
                         : {
-                            background: "#f1f5f9",
-                            color: "#475569",
-                            border: "1px solid #e2e8f0",
+                            background: "#f0fdf4",
+                            color: "#16a34a",
+                            border: "1.5px solid #86efac",
                           }),
                     }}
                   >
                     Customers
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("regCustomers")}
+                    style={{
+                      padding: "0.5rem 1.15rem",
+                      fontSize: "0.9rem",
+                      borderRadius: "8px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                      ...(activeTab === "regCustomers"
+                        ? {
+                            background: "linear-gradient(135deg, #b91c1c 0%, #dc2626 100%)",
+                            color: "#ffffff",
+                            border: "none",
+                            boxShadow: "0 4px 12px rgba(220, 38, 38, 0.35)",
+                          }
+                        : {
+                            background: "#fef2f2",
+                            color: "#dc2626",
+                            border: "1.5px solid #fca5a5",
+                          }),
+                    }}
+                  >
+                    Reg.Customers
                   </button>
                 </div>
               </div>
@@ -1280,7 +1677,7 @@ export default function AdminPage() {
                     <span className="badge badge-registered">Registered ({plots.filter(p => p.status === "Registered").length})</span>
                     <span className="badge badge-booked">Booked ({plots.filter(p => p.status === "Booked").length})</span>
                   </div>
-                ) : (
+                ) : activeTab === "customers" ? (
                   <button
                     className="btn btn-primary"
                     onClick={() => {
@@ -1298,6 +1695,30 @@ export default function AdminPage() {
                     }}
                   >
                     {showCustomerForm && !editingCustomer ? "✕ Close Form" : "+ Add Customer"}
+                  </button>
+                ) : (
+                  <button
+                    className="btn"
+                    onClick={() => {
+                      if (showRegCustomerForm && !editingRegCustomer) {
+                        setShowRegCustomerForm(false);
+                      } else {
+                        handleOpenAddRegCustomer();
+                      }
+                    }}
+                    style={{
+                      padding: "0.55rem 1.25rem",
+                      fontWeight: 600,
+                      fontSize: "0.9rem",
+                      background: "linear-gradient(135deg, #b91c1c 0%, #dc2626 100%)",
+                      color: "#ffffff",
+                      border: "none",
+                      borderRadius: "8px",
+                      boxShadow: "0 4px 12px rgba(220, 38, 38, 0.3)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {showRegCustomerForm && !editingRegCustomer ? "✕ Close Form" : "+ Add Reg.Customer"}
                   </button>
                 )}
               </div>
@@ -1552,7 +1973,7 @@ export default function AdminPage() {
                   )}
                 </div>
               </div>
-            ) : (
+            ) : activeTab === "customers" ? (
               <div className="admin-customers-container fade-in" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                 {/* 1. TOTAL SUMMARY ABOVE THE TABLE */}
                 <div className="glass-card customer-summary-card" style={{
@@ -2097,6 +2518,442 @@ export default function AdminPage() {
                                 {totalBalanceDue <= 0 ? "All Cleared" : "Balance Due"}
                               </td>
                               <td style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>—</td>
+                              <td data-html2canvas-ignore="true" className="no-print"></td>
+                            </tr>
+                          </tfoot>
+                        )}
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="admin-reg-customers-container fade-in" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                {/* 1. TOTAL SUMMARY ABOVE THE TABLE */}
+                <div className="glass-card customer-summary-card" style={{
+                  padding: "1.1rem 1.5rem",
+                  borderRadius: "12px",
+                  border: "1px solid var(--border-light)"
+                }}>
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    flexWrap: "wrap",
+                    gap: "1rem"
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                      <span style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--text-main)" }}>
+                        Registered Customers Summary:
+                      </span>
+                      <span style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 500 }}>
+                        ({layouts.find((l) => l._id === selectedLayoutId)?.name || "Current Layout"})
+                      </span>
+                    </div>
+
+                    <div style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "1.25rem",
+                      flexWrap: "wrap"
+                    }}>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem" }}>
+                        <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase" }}>Registered Customers:</span>
+                        <span style={{ fontSize: "1.2rem", fontWeight: 700, color: "#dc2626" }}>
+                          {totalRegCustomersCount}
+                        </span>
+                      </div>
+
+                      {totalRegSqYards > 0 && (
+                        <>
+                          <div style={{ width: "1px", height: "18px", background: "var(--border-light)" }}></div>
+
+                          <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem" }}>
+                            <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase" }}>Total Sq. Yards:</span>
+                            <span style={{ fontSize: "1.2rem", fontWeight: 700, color: "var(--text-main)" }}>
+                              {totalRegSqYards.toLocaleString("en-IN")}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. INLINE ADD / EDIT REG.CUSTOMER FORM (No fields are mandatory) */}
+                {showRegCustomerForm && (
+                  <div className="glass-card inline-customer-form fade-in" style={{
+                    padding: "1.5rem",
+                    border: "2px solid rgba(220, 38, 38, 0.25)",
+                    background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(254, 242, 242, 0.35) 100%)",
+                    borderRadius: "14px",
+                    boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)"
+                  }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem", borderBottom: "1px solid var(--border-light)", paddingBottom: "0.75rem" }}>
+                      <div>
+                        <h3 style={{ margin: 0, fontSize: "1.25rem", color: "#b91c1c" }}>
+                          {editingRegCustomer ? `Edit Reg.Customer: ${editingRegCustomer.customerName || `S.No ${editingRegCustomer.sNo || ""}`}` : "+ Add Reg.Customer"}
+                        </h3>
+                        <p style={{ margin: "0.25rem 0 0", fontSize: "0.82rem", color: "var(--text-muted)" }}>
+                          Layout: <strong>{layouts.find((l) => l._id === selectedLayoutId)?.name || "Current Layout"}</strong>
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className="close-btn"
+                        onClick={() => {
+                          setShowRegCustomerForm(false);
+                          setEditingRegCustomer(null);
+                        }}
+                        style={{ fontSize: "1.5rem", cursor: "pointer", background: "none", border: "none", color: "var(--text-muted)" }}
+                        title="Close Form"
+                      >
+                        &times;
+                      </button>
+                    </div>
+
+                    {regCustomerFormError && <div className="error-message" style={{ marginBottom: "1rem" }}>{regCustomerFormError}</div>}
+
+                    <form onSubmit={handleRegCustomerFormSubmit}>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: "1rem", marginBottom: "1.25rem" }}>
+                        <div className="form-group">
+                          <label className="form-label" htmlFor="regSNo">S.No.</label>
+                          <input
+                            id="regSNo"
+                            className="form-input"
+                            type="text"
+                            placeholder="e.g. 1"
+                            value={regCustomerForm.sNo}
+                            onChange={(e) => setRegCustomerForm({ ...regCustomerForm, sNo: e.target.value })}
+                            disabled={submittingRegCustomer}
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label className="form-label" htmlFor="regCustomerName">Customer Name</label>
+                          <input
+                            id="regCustomerName"
+                            className="form-input"
+                            type="text"
+                            placeholder="e.g. Ramesh Kumar"
+                            value={regCustomerForm.customerName}
+                            onChange={(e) => setRegCustomerForm({ ...regCustomerForm, customerName: e.target.value })}
+                            disabled={submittingRegCustomer}
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label className="form-label" htmlFor="regSqYards">Sq.yards</label>
+                          <input
+                            id="regSqYards"
+                            className="form-input"
+                            type="text"
+                            placeholder="e.g. 150"
+                            value={regCustomerForm.sqYards}
+                            onChange={(e) => setRegCustomerForm({ ...regCustomerForm, sqYards: e.target.value })}
+                            disabled={submittingRegCustomer}
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label className="form-label" htmlFor="regFacing">Facing</label>
+                          <select
+                            id="regFacing"
+                            className="form-select"
+                            value={regCustomerForm.facing}
+                            onChange={(e) => setRegCustomerForm({ ...regCustomerForm, facing: e.target.value })}
+                            disabled={submittingRegCustomer}
+                          >
+                            <option value="">Select Facing</option>
+                            <option value="East">East</option>
+                            <option value="West">West</option>
+                            <option value="North">North</option>
+                            <option value="South">South</option>
+                            <option value="North-East">North-East</option>
+                            <option value="South-East">South-East</option>
+                            <option value="North-West">North-West</option>
+                            <option value="South-West">South-West</option>
+                            <option value="Corner">Corner</option>
+                          </select>
+                        </div>
+
+                        <div className="form-group">
+                          <label className="form-label" htmlFor="regDate">Reg Date</label>
+                          <input
+                            id="regDate"
+                            className="form-input"
+                            type="date"
+                            value={regCustomerForm.regDate}
+                            onChange={(e) => setRegCustomerForm({ ...regCustomerForm, regDate: e.target.value })}
+                            disabled={submittingRegCustomer}
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label className="form-label" htmlFor="regDocNo">Document No.</label>
+                          <input
+                            id="regDocNo"
+                            className="form-input"
+                            type="text"
+                            placeholder="e.g. 1234/2026"
+                            value={regCustomerForm.documentNo}
+                            onChange={(e) => setRegCustomerForm({ ...regCustomerForm, documentNo: e.target.value })}
+                            disabled={submittingRegCustomer}
+                          />
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+                        <button
+                          className="btn btn-secondary"
+                          type="button"
+                          onClick={() => {
+                            setShowRegCustomerForm(false);
+                            setEditingRegCustomer(null);
+                          }}
+                          disabled={submittingRegCustomer}
+                          style={{ padding: "0.55rem 1.5rem" }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          className="btn"
+                          type="submit"
+                          disabled={submittingRegCustomer}
+                          style={{
+                            padding: "0.55rem 1.75rem",
+                            fontWeight: 600,
+                            background: "linear-gradient(135deg, #b91c1c 0%, #dc2626 100%)",
+                            color: "#ffffff",
+                            border: "none",
+                            borderRadius: "8px",
+                            cursor: "pointer",
+                            boxShadow: "0 4px 12px rgba(220, 38, 38, 0.3)"
+                          }}
+                        >
+                          {submittingRegCustomer ? (
+                            <div className="loading-spinner" style={{ width: 14, height: 14 }}></div>
+                          ) : editingRegCustomer ? (
+                            "Update Reg.Customer"
+                          ) : (
+                            "Save Reg.Customer"
+                          )}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+
+                {/* 3. REG.CUSTOMERS TABLE */}
+                <div className="glass-card fade-in printable-customer-card" ref={regCustomerTableCardRef} style={{ padding: "1.5rem" }}>
+                  <div style={{ marginBottom: "1rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.75rem" }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: "1.2rem", color: "#b91c1c" }}>
+                        Reg.Customers List ({layouts.find((l) => l._id === selectedLayoutId)?.name || "Current Layout"})
+                      </h3>
+                      <p style={{ margin: "0.2rem 0 0", fontSize: "0.82rem", color: "var(--text-muted)" }}>
+                        Showing all registered customers for this layout sheet.
+                      </p>
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }} data-html2canvas-ignore="true" className="no-print">
+                      {/* Download Table Button with Dropdown */}
+                      <div className="download-btn-container" ref={regDownloadMenuRef}>
+                        <button
+                          type="button"
+                          className="btn-download"
+                          onClick={() => setShowRegDownloadMenu((prev) => !prev)}
+                          disabled={regCustomers.length === 0 || downloadingRegTable}
+                          title={regCustomers.length === 0 ? "No registered customer records to download" : "Download Reg.Customer Table"}
+                        >
+                          {downloadingRegTable ? (
+                            <>
+                              <div className="loading-spinner" style={{ width: 14, height: 14 }}></div>
+                              <span>Generating...</span>
+                            </>
+                          ) : (
+                            <>
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                              </svg>
+                              <span>Download</span>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "transform 0.2s", transform: showRegDownloadMenu ? "rotate(180deg)" : "none" }}>
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                              </svg>
+                            </>
+                          )}
+                        </button>
+
+                        {showRegDownloadMenu && (
+                          <div className="download-dropdown-menu fade-in">
+                            <button
+                              type="button"
+                              className="download-menu-item"
+                              onClick={handleDownloadRegCSV}
+                            >
+                              <div className="download-menu-item-icon" style={{ background: "rgba(16, 185, 129, 0.12)", color: "#059669" }}>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                  <polyline points="14 2 14 8 20 8"></polyline>
+                                  <line x1="8" y1="13" x2="16" y2="13"></line>
+                                  <line x1="8" y1="17" x2="16" y2="17"></line>
+                                  <polyline points="10 9 9 9 8 9"></polyline>
+                                </svg>
+                              </div>
+                              <div>
+                                <div className="download-menu-item-title">Excel / CSV (.csv)</div>
+                                <div className="download-menu-item-desc">Spreadsheet for Excel & Google Sheets</div>
+                              </div>
+                            </button>
+
+                            <button
+                              type="button"
+                              className="download-menu-item"
+                              onClick={handleDownloadRegPDF}
+                            >
+                              <div className="download-menu-item-icon" style={{ background: "rgba(220, 38, 38, 0.12)", color: "#dc2626" }}>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                  <polyline points="14 2 14 8 20 8"></polyline>
+                                  <line x1="9" y1="15" x2="15" y2="15"></line>
+                                </svg>
+                              </div>
+                              <div>
+                                <div className="download-menu-item-title">PDF Document (.pdf)</div>
+                                <div className="download-menu-item-desc">Full landscape A4 PDF document</div>
+                              </div>
+                            </button>
+
+                            <button
+                              type="button"
+                              className="download-menu-item"
+                              onClick={handleDownloadRegPNG}
+                            >
+                              <div className="download-menu-item-icon" style={{ background: "rgba(185, 28, 28, 0.12)", color: "#b91c1c" }}>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                  <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                  <polyline points="21 15 16 10 5 21"></polyline>
+                                </svg>
+                              </div>
+                              <div>
+                                <div className="download-menu-item-title">Image (.png)</div>
+                                <div className="download-menu-item-desc">High-resolution snapshot for sharing</div>
+                              </div>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {!showRegCustomerForm && (
+                        <button
+                          className="btn"
+                          onClick={handleOpenAddRegCustomer}
+                          style={{
+                            fontSize: "0.88rem",
+                            padding: "0.45rem 1.15rem",
+                            fontWeight: 600,
+                            background: "linear-gradient(135deg, #b91c1c 0%, #dc2626 100%)",
+                            color: "#ffffff",
+                            border: "none",
+                            borderRadius: "8px",
+                            cursor: "pointer",
+                            boxShadow: "0 4px 12px rgba(220, 38, 38, 0.3)"
+                          }}
+                        >
+                          + Add Reg.Customer
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {loadingRegCustomers ? (
+                    <div style={{ textAlign: "center", padding: "3rem" }}>
+                      <div className="loading-spinner"></div>
+                      <p style={{ marginTop: "0.75rem", fontSize: "0.9rem" }}>Loading registered customers...</p>
+                    </div>
+                  ) : regCustomers.length === 0 ? (
+                    <div className="empty-state">
+                      No registered customers found for <strong>{layouts.find((l) => l._id === selectedLayoutId)?.name || "this layout"}</strong>. Click <strong>+ Add Reg.Customer</strong> to record the first registered customer.
+                    </div>
+                  ) : (
+                    <div className="customer-table-wrapper" style={{ overflowX: "auto" }}>
+                      <table className="customer-table">
+                        <thead>
+                          <tr>
+                            <th style={{ width: "80px", textAlign: "center" }}>S.No.</th>
+                            <th>Customer Name</th>
+                            <th>Sq.yards</th>
+                            <th>Facing</th>
+                            <th>Reg Date</th>
+                            <th>Document No.</th>
+                            <th style={{ textAlign: "center", width: "130px" }} data-html2canvas-ignore="true" className="no-print">Edit/Delete</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {regCustomers.map((cust, idx) => (
+                            <tr key={cust._id}>
+                              <td style={{ textAlign: "center" }}>
+                                <span style={{ color: "#64748b", fontWeight: 700, fontSize: "0.85rem" }}>
+                                  {cust.sNo || idx + 1}
+                                </span>
+                              </td>
+                              <td style={{ fontWeight: 600, color: "var(--text-main)" }}>
+                                {cust.customerName || "—"}
+                              </td>
+                              <td style={{ fontWeight: 500 }}>
+                                {cust.sqYards || "—"}
+                              </td>
+                              <td>
+                                {cust.facing ? (
+                                  <span className="badge" style={{ background: "rgba(220, 38, 38, 0.08)", color: "#b91c1c", border: "1px solid rgba(220, 38, 38, 0.2)", textTransform: "uppercase" }}>
+                                    {cust.facing}
+                                  </span>
+                                ) : "—"}
+                              </td>
+                              <td style={{ color: "#475569", fontWeight: 500 }}>
+                                {cust.regDate || "—"}
+                              </td>
+                              <td style={{ fontWeight: 600, color: "var(--text-main)" }}>
+                                {cust.documentNo ? (
+                                  <span style={{ background: "#f8fafc", padding: "0.2rem 0.5rem", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
+                                    {cust.documentNo}
+                                  </span>
+                                ) : "—"}
+                              </td>
+                              <td style={{ textAlign: "center" }} data-html2canvas-ignore="true" className="no-print">
+                                <div style={{ display: "inline-flex", gap: "0.4rem" }}>
+                                  <button
+                                    className="btn-sm btn-edit"
+                                    onClick={() => handleOpenEditRegCustomer(cust)}
+                                    title="Edit Reg.Customer"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    className="btn-sm btn-delete"
+                                    onClick={() => handleDeleteRegCustomer(cust)}
+                                    title="Delete Reg.Customer"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        {regCustomers.length > 0 && (
+                          <tfoot>
+                            <tr style={{ background: "#f8fafc", fontWeight: 700 }}>
+                              <td colSpan={2} style={{ textAlign: "right", color: "var(--text-main)", fontWeight: 700, fontSize: "0.9rem" }}>
+                                Total Registered Customers ({regCustomers.length}):
+                              </td>
+                              <td style={{ fontWeight: 800, color: "#b91c1c", fontSize: "0.92rem" }}>
+                                {totalRegSqYards > 0 ? `${totalRegSqYards.toLocaleString("en-IN")} Sq.Yds` : "—"}
+                              </td>
+                              <td colSpan={3}></td>
                               <td data-html2canvas-ignore="true" className="no-print"></td>
                             </tr>
                           </tfoot>
