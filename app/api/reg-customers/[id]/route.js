@@ -35,10 +35,12 @@ export async function PUT(request, { params }) {
       layoutId,
       sNo,
       customerName,
+      plotNo,
       sqYards,
       facing,
       regDate,
       documentNo,
+      tlName,
     } = body;
 
     await dbConnect();
@@ -50,10 +52,12 @@ export async function PUT(request, { params }) {
 
     if (sNo !== undefined) regCustomer.sNo = String(sNo).trim();
     if (customerName !== undefined) regCustomer.customerName = String(customerName).trim();
+    if (plotNo !== undefined) regCustomer.plotNo = String(plotNo).trim();
     if (sqYards !== undefined) regCustomer.sqYards = String(sqYards).trim();
     if (facing !== undefined) regCustomer.facing = String(facing).trim();
     if (regDate !== undefined) regCustomer.regDate = String(regDate).trim();
     if (documentNo !== undefined) regCustomer.documentNo = String(documentNo).trim();
+    if (tlName !== undefined) regCustomer.tlName = String(tlName).trim();
 
     if (layoutId) {
       regCustomer.layoutId = layoutId;

@@ -70,10 +70,12 @@ export default function AdminPage() {
   const [regCustomerForm, setRegCustomerForm] = useState({
     sNo: "",
     customerName: "",
+    plotNo: "",
     sqYards: "",
     facing: "",
     regDate: "",
     documentNo: "",
+    tlName: "",
   });
   const [regCustomerFormError, setRegCustomerFormError] = useState("");
   const [submittingRegCustomer, setSubmittingRegCustomer] = useState(false);
@@ -1119,10 +1121,12 @@ export default function AdminPage() {
     setRegCustomerForm({
       sNo: String(regCustomers.length + 1),
       customerName: "",
+      plotNo: "",
       sqYards: "",
       facing: "",
       regDate: new Date().toISOString().split("T")[0],
       documentNo: "",
+      tlName: "",
     });
     setRegCustomerFormError("");
     setShowRegCustomerForm(true);
@@ -1133,10 +1137,12 @@ export default function AdminPage() {
     setRegCustomerForm({
       sNo: cust.sNo || "",
       customerName: cust.customerName || "",
+      plotNo: cust.plotNo || "",
       sqYards: cust.sqYards || "",
       facing: cust.facing || "",
       regDate: cust.regDate || "",
       documentNo: cust.documentNo || "",
+      tlName: cust.tlName || "",
     });
     setRegCustomerFormError("");
     setShowRegCustomerForm(true);
@@ -1231,19 +1237,23 @@ export default function AdminPage() {
     const headers = [
       "S.No.",
       "Customer Name",
+      "Plot No",
       "Sq.yards",
       "Facing",
       "Reg Date",
-      "Document No."
+      "Document No.",
+      "TL.Name"
     ];
 
     const rows = regCustomers.map((cust, idx) => [
       escapeCsv(cust.sNo || idx + 1),
       escapeCsv(cust.customerName || ""),
+      escapeCsv(cust.plotNo || ""),
       escapeCsv(cust.sqYards || ""),
       escapeCsv(cust.facing || ""),
       escapeCsv(cust.regDate || ""),
-      escapeCsv(cust.documentNo || "")
+      escapeCsv(cust.documentNo || ""),
+      escapeCsv(cust.tlName || "")
     ]);
 
     const csvContent = [
@@ -1362,19 +1372,23 @@ export default function AdminPage() {
       const tableHeaders = [
         "S.No.",
         "Customer Name",
+        "Plot No",
         "Sq.yards",
         "Facing",
         "Reg Date",
         "Document No.",
+        "TL.Name"
       ];
 
       const body = regCustomers.map((cust, idx) => [
         cust.sNo || String(idx + 1),
         cust.customerName || "—",
+        cust.plotNo ? `#${cust.plotNo}` : "—",
         cust.sqYards || "—",
         cust.facing || "—",
         cust.regDate || "—",
         cust.documentNo || "—",
+        cust.tlName || "—",
       ]);
 
       autoTable(doc, {
@@ -1399,12 +1413,14 @@ export default function AdminPage() {
           halign: "center",
         },
         columnStyles: {
-          0: { halign: "center", fontStyle: "bold", cellWidth: 20 },
-          1: { halign: "left", fontStyle: "bold", cellWidth: 70 },
-          2: { halign: "center", cellWidth: 35 },
-          3: { halign: "center", cellWidth: 40 },
-          4: { halign: "center", cellWidth: 40 },
-          5: { halign: "center", cellWidth: 64 },
+          0: { halign: "center", fontStyle: "bold", cellWidth: 16 },
+          1: { halign: "left", fontStyle: "bold", cellWidth: 55 },
+          2: { halign: "center", fontStyle: "bold", cellWidth: 22 },
+          3: { halign: "center", cellWidth: 26 },
+          4: { halign: "center", cellWidth: 30 },
+          5: { halign: "center", cellWidth: 30 },
+          6: { halign: "center", cellWidth: 45 },
+          7: { halign: "center", cellWidth: 45 },
         },
         alternateRowStyles: {
           fillColor: [254, 242, 242],
@@ -2643,6 +2659,27 @@ export default function AdminPage() {
                         </div>
 
                         <div className="form-group">
+                          <label className="form-label" htmlFor="regPlotNo">Plot No</label>
+                          <input
+                            id="regPlotNo"
+                            className="form-input"
+                            type="text"
+                            placeholder="e.g. 42"
+                            value={regCustomerForm.plotNo}
+                            onChange={(e) => setRegCustomerForm({ ...regCustomerForm, plotNo: e.target.value })}
+                            list="reg-customer-plots-datalist"
+                            disabled={submittingRegCustomer}
+                          />
+                          <datalist id="reg-customer-plots-datalist">
+                            {plots.map((p) => (
+                              <option key={p._id} value={p.plotNo}>
+                                Plot #{p.plotNo} {p.plotSize ? `(${p.plotSize})` : ""}
+                              </option>
+                            ))}
+                          </datalist>
+                        </div>
+
+                        <div className="form-group">
                           <label className="form-label" htmlFor="regSqYards">Sq.yards</label>
                           <input
                             id="regSqYards"
@@ -2698,6 +2735,19 @@ export default function AdminPage() {
                             placeholder="e.g. 1234/2026"
                             value={regCustomerForm.documentNo}
                             onChange={(e) => setRegCustomerForm({ ...regCustomerForm, documentNo: e.target.value })}
+                            disabled={submittingRegCustomer}
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label className="form-label" htmlFor="regTlName">TL.Name</label>
+                          <input
+                            id="regTlName"
+                            className="form-input"
+                            type="text"
+                            placeholder="e.g. SSVD"
+                            value={regCustomerForm.tlName}
+                            onChange={(e) => setRegCustomerForm({ ...regCustomerForm, tlName: e.target.value })}
                             disabled={submittingRegCustomer}
                           />
                         </div>
@@ -2883,12 +2933,14 @@ export default function AdminPage() {
                       <table className="customer-table">
                         <thead>
                           <tr>
-                            <th style={{ width: "80px", textAlign: "center" }}>S.No.</th>
+                            <th style={{ width: "70px", textAlign: "center" }}>S.No.</th>
                             <th>Customer Name</th>
+                            <th style={{ width: "95px", textAlign: "center" }}>Plot No</th>
                             <th>Sq.yards</th>
                             <th>Facing</th>
                             <th>Reg Date</th>
                             <th>Document No.</th>
+                            <th style={{ minWidth: "115px", whiteSpace: "nowrap" }}>TL.Name</th>
                             <th style={{ textAlign: "center", width: "130px" }} data-html2canvas-ignore="true" className="no-print">Edit/Delete</th>
                           </tr>
                         </thead>
@@ -2902,6 +2954,13 @@ export default function AdminPage() {
                               </td>
                               <td style={{ fontWeight: 600, color: "var(--text-main)" }}>
                                 {cust.customerName || "—"}
+                              </td>
+                              <td style={{ textAlign: "center" }}>
+                                {cust.plotNo ? (
+                                  <span className="badge-plot-no">#{cust.plotNo}</span>
+                                ) : (
+                                  "—"
+                                )}
                               </td>
                               <td style={{ fontWeight: 500 }}>
                                 {cust.sqYards || "—"}
@@ -2922,6 +2981,9 @@ export default function AdminPage() {
                                     {cust.documentNo}
                                   </span>
                                 ) : "—"}
+                              </td>
+                              <td style={{ fontWeight: 500, color: "#475569", whiteSpace: "nowrap" }}>
+                                {cust.tlName || "—"}
                               </td>
                               <td style={{ textAlign: "center" }} data-html2canvas-ignore="true" className="no-print">
                                 <div style={{ display: "inline-flex", gap: "0.4rem" }}>
@@ -2947,13 +3009,13 @@ export default function AdminPage() {
                         {regCustomers.length > 0 && (
                           <tfoot>
                             <tr style={{ background: "#f8fafc", fontWeight: 700 }}>
-                              <td colSpan={2} style={{ textAlign: "right", color: "var(--text-main)", fontWeight: 700, fontSize: "0.9rem" }}>
+                              <td colSpan={3} style={{ textAlign: "right", color: "var(--text-main)", fontWeight: 700, fontSize: "0.9rem" }}>
                                 Total Registered Customers ({regCustomers.length}):
                               </td>
                               <td style={{ fontWeight: 800, color: "#b91c1c", fontSize: "0.92rem" }}>
                                 {totalRegSqYards > 0 ? `${totalRegSqYards.toLocaleString("en-IN")} Sq.Yds` : "—"}
                               </td>
-                              <td colSpan={3}></td>
+                              <td colSpan={4}></td>
                               <td data-html2canvas-ignore="true" className="no-print"></td>
                             </tr>
                           </tfoot>

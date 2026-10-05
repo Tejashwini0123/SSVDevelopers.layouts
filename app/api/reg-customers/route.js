@@ -78,10 +78,12 @@ export async function POST(request) {
       layoutId,
       sNo,
       customerName,
+      plotNo,
       sqYards,
       facing,
       regDate,
       documentNo,
+      tlName,
     } = body;
 
     await dbConnect();
@@ -99,10 +101,12 @@ export async function POST(request) {
       layoutName,
       sNo: sNo ? String(sNo).trim() : "",
       customerName: customerName ? String(customerName).trim() : "",
+      plotNo: plotNo ? String(plotNo).trim() : "",
       sqYards: sqYards ? String(sqYards).trim() : "",
       facing: facing ? String(facing).trim() : "",
       regDate: regDate ? String(regDate).trim() : "",
       documentNo: documentNo ? String(documentNo).trim() : "",
+      tlName: tlName ? String(tlName).trim() : "",
     });
 
     return NextResponse.json({ success: true, regCustomer: newRegCustomer }, { status: 201 });
