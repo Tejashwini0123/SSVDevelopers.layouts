@@ -625,7 +625,7 @@ export default function AdminPage() {
   };
 
   const handleDeleteCustomer = async (cust) => {
-    if (!confirm(`Are you sure you want to delete customer "${cust.customerName}" (Plot #${cust.plotNo})?`)) return;
+    if (!confirm(`Are you sure you want to delete customer "${cust.customerName}" (Plot ${cust.plotNo})?`)) return;
 
     try {
       const res = await fetch(`/api/customers/${cust._id}`, { method: "DELETE" });
@@ -692,6 +692,7 @@ export default function AdminPage() {
 
   // Customer metrics for overview
   const totalCustomersCount = customers.length;
+  const totalSqYards = customers.reduce((sum, c) => sum + (Number(c.sqYards) || 0), 0);
   const totalAgreedValue = customers.reduce((sum, c) => sum + (Number(c.totalPlotCost) || 0), 0);
   const totalCollections = customers.reduce((sum, c) => sum + (Number(c.paidAmount) || 0), 0);
   const totalBalanceDue = customers.reduce((sum, c) => sum + (Number(c.balanceAmount) || 0), 0);
@@ -745,7 +746,7 @@ export default function AdminPage() {
         idx + 1,
         escapeCsv(cust.customerName),
         escapeCsv(cust.dateOfBooking),
-        escapeCsv(`Plot #${cust.plotNo}`),
+        escapeCsv(cust.plotNo || ""),
         sqYards,
         sqYardCost,
         escapeCsv(facing),
@@ -763,7 +764,7 @@ export default function AdminPage() {
       escapeCsv(`TOTALS (${customers.length} Customers)`),
       "",
       "",
-      "",
+      totalSqYards || "",
       "",
       "",
       "",
@@ -776,7 +777,7 @@ export default function AdminPage() {
 
     const metaRows = [
       [`Sri Sidhi Vinayakaa Developers - Customers Ledger (${layoutName})`],
-      [`Export Date: ${today}`, `Total Customers: ${customers.length}`, `Total Plot Cost: Rs.${totalAgreedValue}`, `Total Paid: Rs.${totalCollections}`, `Total Balance Due: Rs.${totalBalanceDue}`],
+      [`Export Date: ${today}`, `Total Customers: ${customers.length}`, `Total Sq. Yards: ${totalSqYards}`, `Total Plot Cost: Rs.${totalAgreedValue}`, `Total Paid: Rs.${totalCollections}`, `Total Balance Due: Rs.${totalBalanceDue}`],
       [],
     ];
 
@@ -922,14 +923,18 @@ export default function AdminPage() {
       doc.setTextColor(71, 85, 105);
       doc.text(`CUSTOMERS: ${customers.length}`, 14, 33);
 
+      if (totalSqYards > 0) {
+        doc.text(`TOTAL SQ. YARDS: ${totalSqYards.toLocaleString("en-IN")}`, 52, 33);
+      }
+
       doc.setTextColor(109, 40, 217);
-      doc.text(`TOTAL PLOT COST: Rs.${totalAgreedValue.toLocaleString("en-IN")}`, 55, 33);
+      doc.text(`TOTAL PLOT COST: Rs.${totalAgreedValue.toLocaleString("en-IN")}`, 102, 33);
 
       doc.setTextColor(5, 150, 105);
-      doc.text(`TOTAL PAID: Rs.${totalCollections.toLocaleString("en-IN")}`, 135, 33);
+      doc.text(`TOTAL PAID: Rs.${totalCollections.toLocaleString("en-IN")}`, 172, 33);
 
       doc.setTextColor(totalBalanceDue <= 0 ? 22 : 220, totalBalanceDue <= 0 ? 163 : 38, totalBalanceDue <= 0 ? 74 : 38);
-      doc.text(`TOTAL BALANCE: Rs.${totalBalanceDue.toLocaleString("en-IN")}`, 210, 33);
+      doc.text(`TOTAL BALANCE: Rs.${totalBalanceDue.toLocaleString("en-IN")}`, 230, 33);
 
       // Prepare Table Data for autoTable
       const head = [
@@ -964,7 +969,7 @@ export default function AdminPage() {
           idx + 1,
           cust.customerName || "—",
           cust.dateOfBooking || "—",
-          `#${cust.plotNo}`,
+          cust.plotNo ? `${cust.plotNo}` : "—",
           sqYards,
           sqYardCost ? `Rs.${sqYardCost.toLocaleString("en-IN")}` : "—",
           facing,
@@ -983,7 +988,7 @@ export default function AdminPage() {
           `TOTALS (${customers.length} Customers)`,
           "",
           "",
-          "",
+          totalSqYards > 0 ? `${totalSqYards.toLocaleString("en-IN")} Sq.Yds` : "",
           "",
           "",
           "",
@@ -1383,7 +1388,7 @@ export default function AdminPage() {
       const body = regCustomers.map((cust, idx) => [
         cust.sNo || String(idx + 1),
         cust.customerName || "—",
-        cust.plotNo ? `#${cust.plotNo}` : "—",
+        cust.plotNo ? `${cust.plotNo}` : "—",
         cust.sqYards || "—",
         cust.facing || "—",
         cust.regDate || "—",
@@ -1910,7 +1915,7 @@ export default function AdminPage() {
                             onClick={(e) => handleMarkerClick(plot, e)}
                           >
                             <div>
-                              <strong style={{ color: "var(--text-main)" }}>Plot #{plot.plotNo}</strong>
+                              <strong style={{ color: "var(--text-main)" }}>Plot {plot.plotNo}</strong>
                               <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
                                 {plot.facing && `${plot.facing} | `}{plot.plotSize || "Size not set"}
                               </div>
@@ -2026,6 +2031,19 @@ export default function AdminPage() {
                         </span>
                       </div>
 
+                      {totalSqYards > 0 && (
+                        <>
+                          <div style={{ width: "1px", height: "18px", background: "var(--border-light)" }}></div>
+
+                          <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem" }}>
+                            <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase" }}>Total Sq. Yards:</span>
+                            <span style={{ fontSize: "1.2rem", fontWeight: 700, color: "var(--text-main)" }}>
+                              {totalSqYards.toLocaleString("en-IN")}
+                            </span>
+                          </div>
+                        </>
+                      )}
+
                       <div style={{ width: "1px", height: "18px", background: "var(--border-light)" }}></div>
 
                       <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem" }}>
@@ -2134,7 +2152,7 @@ export default function AdminPage() {
                           <datalist id="customer-plots-datalist">
                             {plots.map((p) => (
                               <option key={p._id} value={p.plotNo}>
-                                Plot #{p.plotNo} {p.plotSize ? `(${p.plotSize})` : ""}
+                                Plot {p.plotNo} {p.plotSize ? `(${p.plotSize})` : ""}
                               </option>
                             ))}
                           </datalist>
@@ -2465,7 +2483,7 @@ export default function AdminPage() {
                                 {cust.dateOfBooking || "—"}
                               </td>
                               <td>
-                                <span className="badge-plot-no">#{cust.plotNo}</span>
+                                <span className="badge-plot-no">{cust.plotNo}</span>
                               </td>
                               <td style={{ fontWeight: 500 }}>{cust.sqYards ? `${cust.sqYards}` : "—"}</td>
                               <td style={{ fontWeight: 500 }}>{cust.sqYardCost ? `₹${Number(cust.sqYardCost).toLocaleString("en-IN")}` : "—"}</td>
@@ -2518,9 +2536,13 @@ export default function AdminPage() {
                         {customers.length > 0 && (
                           <tfoot>
                             <tr style={{ background: "#f8fafc", fontWeight: 700 }}>
-                              <td colSpan={8} style={{ textAlign: "right", color: "var(--text-main)", fontWeight: 700, fontSize: "0.9rem" }}>
+                              <td colSpan={4} style={{ textAlign: "right", color: "var(--text-main)", fontWeight: 700, fontSize: "0.9rem" }}>
                                 Total Summary ({customers.length} Customers):
                               </td>
+                              <td style={{ fontWeight: 800, color: "#6d28d9", fontSize: "0.92rem" }}>
+                                {totalSqYards > 0 ? `${totalSqYards.toLocaleString("en-IN")} Sq.Yds` : "—"}
+                              </td>
+                              <td colSpan={3}></td>
                               <td style={{ fontWeight: 800, color: "#6d28d9", fontSize: "0.92rem" }}>
                                 ₹{totalAgreedValue.toLocaleString("en-IN")}
                               </td>
@@ -2673,7 +2695,7 @@ export default function AdminPage() {
                           <datalist id="reg-customer-plots-datalist">
                             {plots.map((p) => (
                               <option key={p._id} value={p.plotNo}>
-                                Plot #{p.plotNo} {p.plotSize ? `(${p.plotSize})` : ""}
+                                Plot {p.plotNo} {p.plotSize ? `(${p.plotSize})` : ""}
                               </option>
                             ))}
                           </datalist>
@@ -2957,7 +2979,7 @@ export default function AdminPage() {
                               </td>
                               <td style={{ textAlign: "center" }}>
                                 {cust.plotNo ? (
-                                  <span className="badge-plot-no">#{cust.plotNo}</span>
+                                  <span className="badge-plot-no">{cust.plotNo}</span>
                                 ) : (
                                   "—"
                                 )}
